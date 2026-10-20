@@ -1,4 +1,3 @@
-
 import 'package:flutter/foundation.dart';
 
 class CartItem {
@@ -41,6 +40,30 @@ class OrderStore extends ChangeNotifier {
 
   int get cartQuantity =>
       cart.fold(0, (total, item) => total + item.quantity);
+
+  void setOrderType(String type) {
+    orderType = type;
+    notifyListeners();
+  }
+
+  void setTableNumber(String table) {
+    tableNumber = table;
+    notifyListeners();
+  }
+
+  void setPaymentMethod(String method) {
+    paymentMethod = method;
+    notifyListeners();
+  }
+
+  void setKitchenNote(String note) {
+    kitchenNote = note;
+    notifyListeners();
+  }
+
+  void refresh() {
+    notifyListeners();
+  }
 
   void addItem(CartItem item) {
     cart.add(item);

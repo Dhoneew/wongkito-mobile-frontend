@@ -1,5 +1,7 @@
 
 import 'package:flutter/material.dart';
+import 'edit_profile_screen.dart';
+import '../notification/notification_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -59,18 +61,32 @@ class ProfileScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
-          _buildItem(Icons.person_outline, 'Informasi Pribadi'),
-          _buildItem(Icons.location_on_outlined, 'Alamat'),
-          _buildItem(Icons.receipt_long, 'Riwayat Pesanan'),
-          _buildItem(Icons.notifications_none, 'Notifikasi'),
-          _buildItem(Icons.help_outline, 'Bantuan'),
-          _buildItem(Icons.logout, 'Keluar'),
+          _buildItem(context, Icons.edit_outlined, 'Edit Profil', onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const EditProfileScreen(),
+              ),
+            );
+          }),
+          _buildItem(context, Icons.location_on_outlined, 'Alamat'),
+          _buildItem(context, Icons.receipt_long, 'Riwayat Pesanan'),
+          _buildItem(context, Icons.notifications_none, 'Notifikasi', onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const NotificationScreen(),
+              ),
+            );
+          }),
+          _buildItem(context, Icons.help_outline, 'Bantuan'),
+          _buildItem(context, Icons.logout, 'Keluar'),
         ],
       ),
     );
   }
 
-  static Widget _buildItem(IconData icon, String title) {
+  static Widget _buildItem(BuildContext context, IconData icon, String title, {VoidCallback? onTap}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
@@ -92,7 +108,7 @@ class ProfileScreen extends StatelessWidget {
           Icons.chevron_right,
           color: Color(0xFF888888),
         ),
-        onTap: () {},
+        onTap: onTap ?? () {},
       ),
     );
   }

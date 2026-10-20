@@ -1,17 +1,25 @@
-
 import 'package:flutter/material.dart';
 
 import 'promo_detail_screen.dart';
 import 'search_screen.dart';
 import '../menu/menu_detail_screen.dart';
+import '../notification/notification_screen.dart';
+import '../orders/checkout_screen.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
 
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
   static const Color backgroundColor = Color(0xFFFAF9F9);
   static const Color textColor = Color(0xFF1A1C1C);
-  static const Color primaryColor = Color(0xFFF79F1A);
+  static const Color orange = Color(0xFFFF5E00);
   static const Color secondaryColor = Color(0xFFEAEAEA);
+
+  String selectedCategory = 'Semua';
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +31,7 @@ class DashboardScreen extends StatelessWidget {
             _buildHeader(context),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 16),
                 children: [
                   _buildPromoBanner(context),
                   const SizedBox(height: 14),
@@ -50,56 +58,76 @@ class DashboardScreen extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Expanded(
-                child: Text(
-                  'Warkop Wong Kito',
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: textColor,
-                  ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Warkop Wong Kito',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: textColor,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: const [
+                        Icon(
+                          Icons.location_on,
+                          size: 16,
+                          color: textColor,
+                        ),
+                        SizedBox(width: 4),
+                        Text(
+                          'Sawojajar',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 12,
+                            color: textColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
               IconButton(
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const CheckoutScreen(),
+                    ),
+                  );
+                },
                 icon: const Icon(
                   Icons.shopping_cart,
                   color: textColor,
-                  size: 23,
+                  size: 24,
                 ),
               ),
               IconButton(
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const NotificationScreen(),
+                    ),
+                  );
+                },
                 icon: const Icon(
                   Icons.notifications,
                   color: textColor,
-                  size: 23,
+                  size: 24,
                 ),
               ),
             ],
           ),
-          const Row(
-            children: [
-              Icon(
-                Icons.person_pin_circle,
-                size: 17,
-                color: textColor,
-              ),
-              SizedBox(width: 4),
-              Text(
-                'Sawojajar',
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 12,
-                  color: textColor,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
 
-          // SEARCH
+          // SEARCH BAR (SESUAI GAMBAR)
           InkWell(
             onTap: () {
               Navigator.push(
@@ -111,22 +139,30 @@ class DashboardScreen extends StatelessWidget {
             },
             borderRadius: BorderRadius.circular(10),
             child: Container(
-              height: 38,
+              height: 40,
               padding: const EdgeInsets.symmetric(horizontal: 10),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: secondaryColor),
+                border: Border.all(color: const Color(0xFFE5E5E5)),
               ),
-              child: const Row(
+              child: Row(
                 children: [
-                  Icon(
-                    Icons.search,
-                    color: primaryColor,
-                    size: 19,
+                  Container(
+                    width: 22,
+                    height: 22,
+                    decoration: const BoxDecoration(
+                      color: orange,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.search,
+                      color: Colors.white,
+                      size: 14,
+                    ),
                   ),
-                  SizedBox(width: 8),
-                  Expanded(
+                  const SizedBox(width: 10),
+                  const Expanded(
                     child: Text(
                       'Search',
                       style: TextStyle(
@@ -136,10 +172,18 @@ class DashboardScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  Icon(
-                    Icons.tune,
-                    color: primaryColor,
-                    size: 19,
+                  Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      color: orange,
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                    child: const Icon(
+                      Icons.tune,
+                      color: Colors.white,
+                      size: 14,
+                    ),
                   ),
                 ],
               ),
@@ -150,47 +194,57 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  // BANNER PROMO
+  // BANNER PROMO (AYAM GEPREK)
   Widget _buildPromoBanner(BuildContext context) {
     return Container(
-      height: 148,
+      height: 165,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Stack(
         fit: StackFit.expand,
         children: [
           Image.asset(
-            'assets/images/Onboarding1.png',
+            'assets/images/ayam_geprek.png',
             fit: BoxFit.cover,
           ),
+          // Gradient halus bawah agar teks terbaca jelas seperti pada gambar
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
                 colors: [
-                  Colors.black.withOpacity(0.60),
                   Colors.transparent,
+                  Colors.black.withValues(alpha: 0.1),
+                  Colors.black.withValues(alpha: 0.65),
                 ],
               ),
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.end,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                // Tag "PROMO HARI INI"
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
+                    horizontal: 7,
                     vertical: 3,
                   ),
                   decoration: BoxDecoration(
-                    color: backgroundColor,
-                    borderRadius: BorderRadius.circular(3),
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(4),
                   ),
                   child: const Text(
                     'PROMO HARI INI',
@@ -202,57 +256,61 @@ class DashboardScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
-                const Text(
-                  'Paket Kenyang Hemat',
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                const Text(
-                  'Kombinasi Es Jeruk, Ayam Geprek, Sambal Matah',
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 9,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                SizedBox(
-                  height: 24,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              const PromoDetailScreen(),
-                        ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: primaryColor,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                      ),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(4),
+
+                // Teks Judul & Tombol Promo
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Paket Kenyang Hemat',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
                       ),
                     ),
-                    child: const Text(
-                      'Lihat Promo',
+                    const SizedBox(height: 2),
+                    const Text(
+                      'Kombinasi Es Jeruk + Ayam Geprek Sambal Matah Wong Kito.',
                       style: TextStyle(
                         fontFamily: 'Inter',
-                        fontSize: 9,
-                        fontWeight: FontWeight.bold,
+                        fontSize: 10,
+                        color: Colors.white,
                       ),
                     ),
-                  ),
+                    const SizedBox(height: 6),
+                    SizedBox(
+                      height: 26,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const PromoDetailScreen(),
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: orange,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(5),
+                          ),
+                        ),
+                        child: const Text(
+                          'Lihat Promo',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -271,7 +329,7 @@ class DashboardScreen extends StatelessWidget {
           'Kategori',
           style: TextStyle(
             fontFamily: 'Poppins',
-            fontSize: 14,
+            fontSize: 15,
             fontWeight: FontWeight.bold,
             color: textColor,
           ),
@@ -281,10 +339,10 @@ class DashboardScreen extends StatelessWidget {
           scrollDirection: Axis.horizontal,
           child: Row(
             children: [
-              _buildCategoryChip('Semua', true),
-              _buildCategoryChip('Kopi', false),
-              _buildCategoryChip('Non-Kopi', false),
-              _buildCategoryChip('Makanan', false),
+              _buildCategoryChip('Semua'),
+              _buildCategoryChip('Kopi'),
+              _buildCategoryChip('Non-Kopi'),
+              _buildCategoryChip('Makanan'),
             ],
           ),
         ),
@@ -292,24 +350,28 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildCategoryChip(String title, bool isActive) {
-    return Container(
-      margin: const EdgeInsets.only(right: 8),
-      padding: const EdgeInsets.symmetric(
-        horizontal: 12,
-        vertical: 7,
-      ),
-      decoration: BoxDecoration(
-        color: isActive ? primaryColor : secondaryColor,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        title,
-        style: TextStyle(
-          fontFamily: 'Inter',
-          fontSize: 11,
-          fontWeight: FontWeight.bold,
-          color: isActive ? Colors.white : textColor,
+  Widget _buildCategoryChip(String title) {
+    final isActive = selectedCategory == title;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() => selectedCategory = title);
+      },
+      child: Container(
+        margin: const EdgeInsets.only(right: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        decoration: BoxDecoration(
+          color: isActive ? orange : secondaryColor,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          title,
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            color: isActive ? Colors.white : textColor,
+          ),
         ),
       ),
     );
@@ -327,7 +389,7 @@ class DashboardScreen extends StatelessWidget {
               'Rekomendasi Untukmu',
               style: TextStyle(
                 fontFamily: 'Poppins',
-                fontSize: 14,
+                fontSize: 15,
                 fontWeight: FontWeight.bold,
                 color: textColor,
               ),
@@ -343,7 +405,7 @@ class DashboardScreen extends StatelessWidget {
                 'Lihat Semua',
                 style: TextStyle(
                   fontFamily: 'Inter',
-                  fontSize: 9,
+                  fontSize: 11,
                   color: Color(0xFF888888),
                 ),
               ),
@@ -356,18 +418,18 @@ class DashboardScreen extends StatelessWidget {
             Expanded(
               child: _buildMenuCard(
                 context: context,
-                image: 'assets/images/Onboarding1.png',
+                image: 'assets/images/kopi_susu.png',
                 name: 'Kopi Susu',
-                price: 'Rp18.000',
+                price: 'Rp. 18.000',
               ),
             ),
             const SizedBox(width: 10),
             Expanded(
               child: _buildMenuCard(
                 context: context,
-                image: 'assets/images/Onboarding3.png',
+                image: 'assets/images/matcha_latte.png',
                 name: 'Matcha Latte',
-                price: 'Rp20.000',
+                price: 'Rp. 20.000',
               ),
             ),
           ],
@@ -376,7 +438,7 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  // KARTU MENU
+  // KARTU MENU (SESUAI GAMBAR)
   Widget _buildMenuCard({
     required BuildContext context,
     required String image,
@@ -384,15 +446,15 @@ class DashboardScreen extends StatelessWidget {
     required String price,
   }) {
     return Container(
-      padding: const EdgeInsets.all(6),
+      padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: secondaryColor),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE5E5E5)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 4,
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 5,
             offset: const Offset(0, 2),
           ),
         ],
@@ -401,7 +463,7 @@ class DashboardScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(5),
+            borderRadius: BorderRadius.circular(8),
             child: AspectRatio(
               aspectRatio: 1.15,
               child: Image.asset(
@@ -410,14 +472,14 @@ class DashboardScreen extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Text(
             name,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               fontFamily: 'Poppins',
-              fontSize: 11,
+              fontSize: 13,
               fontWeight: FontWeight.bold,
               color: textColor,
             ),
@@ -427,15 +489,15 @@ class DashboardScreen extends StatelessWidget {
             price,
             style: const TextStyle(
               fontFamily: 'Inter',
-              fontSize: 10,
+              fontSize: 11,
               color: textColor,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           SizedBox(
             width: double.infinity,
-            height: 28,
-            child: ElevatedButton.icon(
+            height: 30,
+            child: ElevatedButton(
               onPressed: () {
                 Navigator.push(
                   context,
@@ -448,22 +510,21 @@ class DashboardScreen extends StatelessWidget {
                   ),
                 );
               },
-              icon: const Icon(Icons.add, size: 13),
-              label: const Text(
-                'Tambah',
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: primaryColor,
+                backgroundColor: orange,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 4),
+                padding: EdgeInsets.zero,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(3),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              ),
+              child: const Text(
+                '+ Tambah',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ),
@@ -480,10 +541,10 @@ class DashboardScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: secondaryColor),
+        border: Border.all(color: const Color(0xFFE5E5E5)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 5,
             offset: const Offset(0, 2),
           ),
@@ -492,16 +553,12 @@ class DashboardScreen extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFE8C5),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: const Icon(
+          const Padding(
+            padding: EdgeInsets.only(top: 2),
+            child: Icon(
               Icons.smart_toy,
-              color: primaryColor,
-              size: 20,
+              color: orange,
+              size: 26,
             ),
           ),
           const SizedBox(width: 10),
@@ -510,10 +567,10 @@ class DashboardScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'AI Assistant Rekomendasi',
+                  'AI Assisten Rekomendasi',
                   style: TextStyle(
                     fontFamily: 'Poppins',
-                    fontSize: 11,
+                    fontSize: 12,
                     fontWeight: FontWeight.bold,
                     color: textColor,
                   ),
@@ -521,12 +578,12 @@ class DashboardScreen extends StatelessWidget {
                 SizedBox(height: 4),
                 Text(
                   '8 dari 10 orang memesan Kopi Gula Aren '
-                  'minggu ini. Coba varian Kopi Gula Aren.',
+                  'minggu ini. Coba Kopi varian baru Kopi Gula Aren.',
                   style: TextStyle(
                     fontFamily: 'Inter',
-                    fontSize: 9,
-                    color: Color(0xFF555555),
-                    height: 1.4,
+                    fontSize: 10,
+                    color: Color(0xFF444444),
+                    height: 1.35,
                   ),
                 ),
               ],

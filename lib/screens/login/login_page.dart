@@ -1,6 +1,7 @@
-
 import 'package:flutter/material.dart';
 import '../../main.dart';
+import 'forgot_password_page.dart';
+import 'register_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -256,11 +257,10 @@ class _LoginPageState extends State<LoginPage> {
                     alignment: Alignment.centerRight,
                     child: TextButton(
                       onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Fitur lupa kata sandi belum tersedia.',
-                            ),
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ForgotPasswordPage(),
                           ),
                         );
                       },
@@ -287,7 +287,7 @@ class _LoginPageState extends State<LoginPage> {
                         backgroundColor: _orange,
                         foregroundColor: _bg,
                         disabledBackgroundColor:
-                            _orange.withOpacity(0.6),
+                            _orange.withValues(alpha: 0.6),
                         disabledForegroundColor: _bg,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
@@ -344,7 +344,7 @@ class _LoginPageState extends State<LoginPage> {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text(
-                              'Login Google belum diintegrasikan.',
+                              'Login Google berhasil dipilih (Simulasi)',
                             ),
                           ),
                         );
@@ -393,11 +393,10 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       GestureDetector(
                         onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Halaman pendaftaran belum tersedia.',
-                              ),
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const RegisterPage(),
                             ),
                           );
                         },

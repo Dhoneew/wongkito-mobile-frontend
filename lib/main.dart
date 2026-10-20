@@ -2,11 +2,11 @@
 import 'package:flutter/material.dart';
 
 import 'screens/splash/splash_screen.dart';
-import 'screens/onboarding/onboarding_screen.dart';
 import 'screens/home/dashboard_screen.dart';
 import 'screens/menu/menu_screen.dart';
 import 'screens/orders/orders_screen.dart';
 import 'screens/profile/profile_screen.dart';
+import 'widgets/bottom_nav.dart';
 
 void main() {
   runApp(const MyApp());
@@ -53,33 +53,13 @@ class _MainNavigationState extends State<MainNavigation> {
         index: selectedIndex,
         children: pages,
       ),
-      bottomNavigationBar: NavigationBar(
+      bottomNavigationBar: WkmBottomNav(
         selectedIndex: selectedIndex,
-        backgroundColor: const Color(0xFFFAF9F9),
-        indicatorColor: const Color(0xFFFFE0C2),
-        onDestinationSelected: (index) {
+        onTap: (index) {
           setState(() {
             selectedIndex = index;
           });
         },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_filled),
-            label: 'Home',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.restaurant),
-            label: 'Menu',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.receipt_long),
-            label: 'Pesanan',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person),
-            label: 'Profil',
-          ),
-        ],
       ),
     );
   }

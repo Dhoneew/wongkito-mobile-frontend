@@ -1,6 +1,7 @@
-
 import 'package:flutter/material.dart';
 import '../../data/order_store.dart';
+import '../home/promo_detail_screen.dart';
+import 'payment_screen.dart';
 
 class CheckoutScreen extends StatefulWidget {
   const CheckoutScreen({super.key});
@@ -11,6 +12,7 @@ class CheckoutScreen extends StatefulWidget {
 
 class _CheckoutScreenState extends State<CheckoutScreen> {
   static const Color orange = Color(0xFFFF6200);
+  static const Color primaryOrange = Color(0xFFFF5E00);
   static const Color bg = Color(0xFFFAF9F9);
   static const Color dark = Color(0xFF1A1C1C);
 
@@ -41,28 +43,31 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     return AnimatedBuilder(
       animation: store,
       builder: (context, _) {
+        final isEmpty = store.cart.isEmpty;
+
         return Scaffold(
           backgroundColor: bg,
           appBar: AppBar(
             backgroundColor: Colors.white,
             foregroundColor: dark,
-            elevation: 1,
+            elevation: 0.5,
+            leading: IconButton(
+              icon: const Icon(Icons.chevron_left, size: 28, color: dark),
+              onPressed: () => Navigator.pop(context),
+            ),
+            titleSpacing: 0,
             title: const Text(
-              'Keranjang Checkout',
+              'Keranjang',
               style: TextStyle(
                 fontFamily: 'Poppins',
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
+                color: dark,
               ),
             ),
           ),
-          body: store.cart.isEmpty
-              ? const Center(
-                  child: Text(
-                    'Keranjang masih kosong.',
-                    style: TextStyle(fontFamily: 'Inter'),
-                  ),
-                )
+          body: isEmpty
+              ? _buildEmptyCartView()
               : Column(
                   children: [
                     Expanded(
@@ -114,6 +119,170 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
+  // TAMPILAN KERANJANG KOSONG (SESUAI GAMBAR)
+  Widget _buildEmptyCartView() {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // ILUSTRASI KERANJANG KOSONG
+            SizedBox(
+              width: 220,
+              height: 220,
+              child: CustomPaint(
+                painter: _EmptyCartPainter(),
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // JUDUL & KETERANGAN
+            const Text(
+              'Keranjangmu masih kosong',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: dark,
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Yuk pilih makanan dan minuman favoritmu\nuntuk mulai memesan.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 12,
+                color: Color(0xFF666666),
+                height: 1.4,
+              ),
+            ),
+
+            const SizedBox(height: 22),
+
+            // TOMBOL 1: JELAJAHI MENU (SOLID ORANYE)
+            SizedBox(
+              width: 190,
+              height: 38,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                icon: const Icon(Icons.restaurant, size: 16),
+                label: const Text(
+                  'Jelajahi Menu',
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryOrange,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 10),
+
+            // TOMBOL 2: LIHAT PROMO (OUTLINED ORANYE)
+            SizedBox(
+              width: 190,
+              height: 38,
+              child: OutlinedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const PromoDetailScreen(),
+                    ),
+                  );
+                },
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: primaryOrange, width: 1.2),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
+                child: const Text(
+                  'Lihat Promo',
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: primaryOrange,
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 28),
+
+            // KARTU "Mulai dari sini"
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF3E5D4),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF4A443E),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Icon(
+                      Icons.fast_forward,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Mulai dari sini',
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: dark,
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Coba lihat menu favorit dan rekomendasi hari ini.',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 10,
+                            color: Color(0xFF666666),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildOrderType() {
     return Container(
       padding: const EdgeInsets.all(4),
@@ -136,8 +305,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     return Expanded(
       child: GestureDetector(
         onTap: () {
-          store.orderType = value;
-          store.notifyListeners();
+          store.setOrderType(value);
         },
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 13),
@@ -209,8 +377,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
 
     if (selected != null) {
-      store.tableNumber = selected;
-      store.notifyListeners();
+      store.setTableNumber(selected);
     }
   }
 
@@ -229,7 +396,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               width: 68,
               height: 76,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
+              errorBuilder: (context, error, stackTrace) => Container(
                 width: 68,
                 height: 76,
                 color: const Color(0xFFFFE0C2),
@@ -353,8 +520,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
     return GestureDetector(
       onTap: () {
-        store.paymentMethod = value;
-        store.notifyListeners();
+        store.setPaymentMethod(value);
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 9),
@@ -485,6 +651,24 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Future<void> _confirmOrder() async {
+    // Jika metode QRIS, langsung arahkan ke Kode Pembayaran (QRIS Screen)
+    if (store.paymentMethod == 'QRIS') {
+      final nextOrderId =
+          'WK-${(store.orders.length + 1).toString().padLeft(3, '0')}';
+      final totalAmount = store.cartTotal;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PaymentCodeScreen(
+            orderId: nextOrderId,
+            totalAmount: totalAmount,
+          ),
+        ),
+      );
+      return;
+    }
+
+    // Untuk metode lain (Cash / E-Wallet langsung)
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -537,11 +721,143 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       borderRadius: BorderRadius.circular(7),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withOpacity(0.12),
+          color: Colors.black.withValues(alpha: 0.12),
           blurRadius: 4,
           offset: const Offset(0, 2),
         ),
       ],
     );
   }
+}
+
+// PAINTER ILUSTRASI KERANJANG KOSONG (SESUAI GAMBAR REFERENSI)
+class _EmptyCartPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+
+    // 1. Lingkaran Background Krem Lembut
+    final bgPaint = Paint()..color = const Color(0xFFF7EFE6);
+    canvas.drawCircle(Offset(cx, cy + 6), 84, bgPaint);
+
+    // 2. Gagang Keranjang (Handle)
+    final handlePaint = Paint()
+      ..color = const Color(0xFFFF6600)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 7.0
+      ..strokeCap = StrokeCap.round;
+
+    final handleBar = Path();
+    handleBar.moveTo(cx - 58, cy - 36);
+    handleBar.lineTo(cx - 32, cy - 34);
+    canvas.drawPath(handleBar, handlePaint);
+
+    // Batang gagang ke bawah
+    final handleStem = Paint()
+      ..color = const Color(0xFF7A6B5D)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4.5
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(Offset(cx - 48, cy - 35), Offset(cx - 42, cy - 14), handleStem);
+
+    // 3. Badan Keranjang Belakang / Perspektif
+    final sideBasket = Path();
+    sideBasket.moveTo(cx + 12, cy - 18);
+    sideBasket.lineTo(cx + 42, cy - 25);
+    sideBasket.lineTo(cx + 36, cy + 22);
+    sideBasket.lineTo(cx + 10, cy + 28);
+    sideBasket.close();
+    canvas.drawPath(
+      sideBasket,
+      Paint()..color = const Color(0xFFE64A00),
+    );
+
+    // 4. Muka Depan Keranjang (Orange Cerah)
+    final frontBasket = Path();
+    frontBasket.moveTo(cx - 48, cy - 28);
+    frontBasket.lineTo(cx + 12, cy - 18);
+    frontBasket.lineTo(cx + 10, cy + 28);
+    frontBasket.lineTo(cx - 38, cy + 28);
+    frontBasket.close();
+
+    final frontPaint = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color(0xFFFF851B), Color(0xFFFF5200)],
+      ).createShader(Rect.fromLTWH(cx - 48, cy - 28, 60, 56));
+    canvas.drawPath(frontBasket, frontPaint);
+
+    // 5. Rangka Bawah (Chassis) & Roda
+    final chassisPaint = Paint()
+      ..color = const Color(0xFF7A6B5D)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4.0
+      ..strokeCap = StrokeCap.round;
+
+    // Batang penghubung roda
+    canvas.drawLine(Offset(cx - 36, cy + 28), Offset(cx - 40, cy + 40), chassisPaint);
+    canvas.drawLine(Offset(cx + 8, cy + 28), Offset(cx - 2, cy + 40), chassisPaint);
+    canvas.drawLine(Offset(cx - 42, cy + 40), Offset(cx + 34, cy + 40), chassisPaint);
+
+    // Tiga Roda
+    final wheelPaint = Paint()..color = const Color(0xFF5A4A3D);
+    canvas.drawCircle(Offset(cx - 34, cy + 46), 7.5, wheelPaint);
+    canvas.drawCircle(Offset(cx - 1, cy + 46), 7.5, wheelPaint);
+    canvas.drawCircle(Offset(cx + 30, cy + 46), 7.5, wheelPaint);
+
+    // Titik tengah roda
+    final wheelCenter = Paint()..color = const Color(0xFF8D7C6F);
+    canvas.drawCircle(Offset(cx - 34, cy + 46), 2.5, wheelCenter);
+    canvas.drawCircle(Offset(cx - 1, cy + 46), 2.5, wheelCenter);
+    canvas.drawCircle(Offset(cx + 30, cy + 46), 2.5, wheelCenter);
+
+    // 6. Speech Bubble Tanda Tanya (?) di Atas Keranjang
+    final bubbleRect = RRect.fromRectAndRadius(
+      Rect.fromCenter(center: Offset(cx + 16, cy - 52), width: 44, height: 34),
+      const Radius.circular(16),
+    );
+
+    // Ekor balon
+    final tailPath = Path();
+    tailPath.moveTo(cx + 4, cy - 40);
+    tailPath.lineTo(cx + 4, cy - 30);
+    tailPath.lineTo(cx + 14, cy - 38);
+    tailPath.close();
+
+    final bubbleBg = Paint()..color = const Color(0xFFFAF7F2);
+    final bubbleBorder = Paint()
+      ..color = const Color(0xFFC7BCB0)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.5
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawRRect(bubbleRect, bubbleBg);
+    canvas.drawPath(tailPath, bubbleBg);
+    canvas.drawRRect(bubbleRect, bubbleBorder);
+    canvas.drawPath(tailPath, bubbleBorder);
+
+    // Tanda Tanya (?) di dalam Balon
+    final textPainter = TextPainter(
+      text: const TextSpan(
+        text: '?',
+        style: TextStyle(
+          fontFamily: 'Poppins',
+          fontSize: 20,
+          fontWeight: FontWeight.w900,
+          color: Color(0xFFB0A294),
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    );
+    textPainter.layout();
+    textPainter.paint(
+      canvas,
+      Offset(cx + 16 - (textPainter.width / 2), cy - 52 - (textPainter.height / 2)),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

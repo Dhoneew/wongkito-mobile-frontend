@@ -12,13 +12,14 @@ class WkmBottomNav extends StatelessWidget {
   });
 
   static const orange = Color(0xFFFF6200);
+  static const bgColor = Color(0xFFFAF9F9);
 
   @override
   Widget build(BuildContext context) {
     const labels = ['Home', 'Menu', 'Pesanan', 'Profil'];
     const icons = [
       Icons.home_filled,
-      Icons.restaurant,
+      Icons.restaurant_menu,
       Icons.receipt_long,
       Icons.person,
     ];
@@ -26,33 +27,55 @@ class WkmBottomNav extends StatelessWidget {
     return SafeArea(
       top: false,
       child: Container(
-        height: 64,
-        color: const Color(0xFFFAF9F9),
+        height: 80,
+        decoration: BoxDecoration(
+          color: bgColor,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 8,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
         child: Row(
           children: List.generate(4, (index) {
             final selected = selectedIndex == index;
 
             return Expanded(
-              child: InkWell(
+              child: GestureDetector(
                 onTap: () => onTap(index),
+                behavior: HitTestBehavior.opaque,
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
-                      icons[index],
-                      size: 23,
-                      color: selected ? orange : Colors.grey,
+                    // Icon with or without orange circle
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: selected ? 48 : 32,
+                      height: selected ? 48 : 32,
+                      decoration: BoxDecoration(
+                        color: selected ? orange : Colors.transparent,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: Icon(
+                          icons[index],
+                          size: selected ? 26 : 26,
+                          color: selected ? Colors.white : orange,
+                        ),
+                      ),
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 4),
                     Text(
                       labels[index],
                       style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 10,
-                        color: selected ? orange : Colors.grey,
+                        fontFamily: 'Poppins',
+                        fontSize: 11,
+                        color: selected ? orange : orange,
                         fontWeight: selected
-                            ? FontWeight.bold
-                            : FontWeight.normal,
+                            ? FontWeight.w700
+                            : FontWeight.w500,
                       ),
                     ),
                   ],
