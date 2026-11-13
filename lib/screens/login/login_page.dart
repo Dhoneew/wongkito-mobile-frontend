@@ -11,7 +11,7 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  static const Color _orange = Color(0xFFF79F1A);
+  static const Color _orange = Color(0xFFF57C00);
   static const Color _bg = Color(0xFFFAF9F9);
   static const Color _text = Color(0xFF1A1C1C);
   static const Color _grey = Color(0xFF8A8D8D);

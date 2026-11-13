@@ -9,8 +9,8 @@ class RegisterPage extends StatefulWidget {
 }
 
 class _RegisterPageState extends State<RegisterPage> {
-  static const Color orange = Color(0xFFF79F1A);
-  static const Color primaryOrange = Color(0xFFFF6200);
+  static const Color orange = Color(0xFFFFB74D);
+  static const Color primaryOrange = Color(0xFFF57C00);
   static const Color bg = Color(0xFFFAF9F9);
   static const Color dark = Color(0xFF1A1C1C);
   static const Color grey = Color(0xFF888888);
