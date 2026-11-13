@@ -13,7 +13,7 @@ class MenuScreen extends StatefulWidget {
 class _MenuScreenState extends State<MenuScreen> {
   static const Color backgroundColor = Color(0xFFFAF9F9);
   static const Color textColor = Color(0xFF1A1C1C);
-  static const Color orange = Color(0xFFFF6200);
+  static const Color orange = Color(0xFFF57C00);
 
   int selectedCategory = 0;
   bool isError = true; // Shows empty/error state initially as requested

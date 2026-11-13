@@ -20,7 +20,7 @@ class PaymentCodeScreen extends StatefulWidget {
 }
 
 class _PaymentCodeScreenState extends State<PaymentCodeScreen> {
-  static const Color orange = Color(0xFFFF6200);
+  static const Color orange = Color(0xFFF57C00);
   static const Color dark = Color(0xFF1A1C1C);
   static const Color bg = Color(0xFFFAF9F9);
   static const Color secondaryText = Color(0xFF666666);
@@ -721,7 +721,7 @@ class _StepItem extends StatelessWidget {
                 fontFamily: 'Inter',
                 fontSize: 10,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFFFF6200),
+                color: Color(0xFFF57C00),
               ),
             ),
           ),
@@ -838,14 +838,14 @@ class _QrisPainter extends CustomPainter {
     canvas.drawRRect(
       RRect.fromRectAndRadius(centerRect, const Radius.circular(5)),
       Paint()
-        ..color = const Color(0xFFFF6200)
+        ..color = const Color(0xFFF57C00)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.5,
     );
 
     // Gambar simbol mini kopi di tengah
     final iconPaint = Paint()
-      ..color = const Color(0xFFFF6200)
+      ..color = const Color(0xFFF57C00)
       ..style = PaintingStyle.fill;
     final cx = size.width / 2;
     final cy = size.height / 2;
@@ -862,7 +862,7 @@ class _QrisPainter extends CustomPainter {
       3.0,
       false,
       Paint()
-        ..color = const Color(0xFFFF6200)
+        ..color = const Color(0xFFF57C00)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2,
     );

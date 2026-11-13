@@ -16,7 +16,7 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   static const Color backgroundColor = Color(0xFFFAF9F9);
   static const Color textColor = Color(0xFF1A1C1C);
-  static const Color orange = Color(0xFFFF5E00);
+  static const Color orange = Color(0xFFF57C00);
   static const Color secondaryColor = Color(0xFFEAEAEA);
 
   String selectedCategory = 'Semua';

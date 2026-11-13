@@ -20,9 +20,9 @@ class MenuDetailScreen extends StatefulWidget {
 }
 
 class _MenuDetailScreenState extends State<MenuDetailScreen> {
-  static const Color orange = Color(0xFFFF6200);
-  static const Color primaryOrange = Color(0xFFFF5E00);
-  static const Color goldenOrange = Color(0xFFF79F1A);
+  static const Color orange = Color(0xFFF57C00);
+  static const Color primaryOrange = Color(0xFFF57C00);
+  static const Color goldenOrange = Color(0xFFFFB74D);
   static const Color dark = Color(0xFF1A1C1C);
   static const Color bg = Color(0xFFFAF9F9);
   static const Color secondaryText = Color(0xFF666666);

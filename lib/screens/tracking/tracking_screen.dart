@@ -11,9 +11,14 @@ class TrackingScreen extends StatelessWidget {
     this.total = 61000,
   });
 
-  static const Color orange = Color(0xFFFF6200);
-  static const Color dark = Color(0xFF1A1C1C);
-  static const Color background = Color(0xFFFAF9F9);
+  // COLOR PALETTE WONG KITO
+  static const Color orange = Color(0xFFF57C00);
+  static const Color softOrange = Color(0xFFFFF3E0);
+  static const Color dark = Color(0xFF292929);
+  static const Color muted = Color(0xFF757575);
+  static const Color background = Color(0xFFFAFAFA);
+  static const Color borderColor = Color(0xFFEEEEEE);
+  static const Color inactive = Color(0xFFBDBDBD);
 
   String rupiah(int value) {
     return 'Rp${value.toString().replaceAllMapped(
@@ -28,16 +33,22 @@ class TrackingScreen extends StatelessWidget {
       backgroundColor: background,
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           children: [
+            // HEADER
             Row(
               children: [
-                GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: const Icon(
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(
                     Icons.arrow_back_ios_new,
-                    size: 18,
+                    size: 19,
                     color: dark,
+                  ),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(
+                    minWidth: 32,
+                    minHeight: 40,
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -46,7 +57,7 @@ class TrackingScreen extends StatelessWidget {
                     'Lacak Pesanan #$orderId',
                     style: const TextStyle(
                       fontFamily: 'Poppins',
-                      fontSize: 17,
+                      fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: dark,
                     ),
@@ -55,8 +66,9 @@ class TrackingScreen extends StatelessWidget {
               ],
             ),
 
-            const SizedBox(height: 18),
+            const SizedBox(height: 16),
 
+            // AI ESTIMASI WAKTU
             _buildCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -75,15 +87,20 @@ class TrackingScreen extends StatelessWidget {
                           style: TextStyle(
                             fontFamily: 'Poppins',
                             fontWeight: FontWeight.bold,
-                            fontSize: 13,
+                            fontSize: 14,
                             color: dark,
                           ),
                         ),
                       ),
+                      Icon(
+                        Icons.auto_awesome,
+                        color: orange,
+                        size: 17,
+                      ),
                     ],
                   ),
 
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
 
                   const Text(
                     'Perkiraan selesai dalam 8–12 menit. '
@@ -91,25 +108,25 @@ class TrackingScreen extends StatelessWidget {
                     'kapasitas barista, dan tingkat kesulitan menu.',
                     style: TextStyle(
                       fontFamily: 'Inter',
-                      fontSize: 10,
+                      fontSize: 12,
                       height: 1.5,
-                      color: dark,
+                      color: muted,
                     ),
                   ),
 
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
 
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(20),
                     child: const LinearProgressIndicator(
                       value: 0.65,
-                      minHeight: 6,
+                      minHeight: 7,
                       color: orange,
-                      backgroundColor: Color(0xFFE6E6E6),
+                      backgroundColor: Color(0xFFEEEEEE),
                     ),
                   ),
 
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
 
                   const Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -118,14 +135,17 @@ class TrackingScreen extends StatelessWidget {
                         'Masuk: 14:10',
                         style: TextStyle(
                           fontFamily: 'Inter',
-                          fontSize: 9,
+                          fontSize: 10,
+                          color: muted,
                         ),
                       ),
                       Text(
                         'Estimasi: 14:22 WIB',
                         style: TextStyle(
                           fontFamily: 'Inter',
-                          fontSize: 9,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: dark,
                         ),
                       ),
                     ],
@@ -134,8 +154,9 @@ class TrackingScreen extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
 
+            // PROGRES PESANAN
             _buildCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -145,12 +166,12 @@ class TrackingScreen extends StatelessWidget {
                     style: TextStyle(
                       fontFamily: 'Poppins',
                       fontWeight: FontWeight.bold,
-                      fontSize: 14,
+                      fontSize: 15,
                       color: dark,
                     ),
                   ),
 
-                  const SizedBox(height: 15),
+                  const SizedBox(height: 20),
 
                   _buildStep(
                     icon: Icons.check,
@@ -181,7 +202,8 @@ class TrackingScreen extends StatelessWidget {
                   _buildStep(
                     icon: Icons.check_circle,
                     title: 'Selesai Dinikmati',
-                    description: 'Selamat menikmati pesanan Anda',
+                    description:
+                        'Selamat menikmati pesanan Anda',
                     time: 'Menunggu',
                     last: true,
                   ),
@@ -189,16 +211,43 @@ class TrackingScreen extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 14),
+            const SizedBox(height: 16),
 
-            Text(
-              'Total pesanan: ${rupiah(total)}',
-              textAlign: TextAlign.end,
-              style: const TextStyle(
-                fontFamily: 'Poppins',
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
-                color: dark,
+            // TOTAL PESANAN
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
+              decoration: BoxDecoration(
+                color: softOrange,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: const Color(0xFFFFE0B2),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Total Pesanan',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: dark,
+                    ),
+                  ),
+                  Text(
+                    rupiah(total),
+                    style: const TextStyle(
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: orange,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -207,20 +256,22 @@ class TrackingScreen extends StatelessWidget {
     );
   }
 
+  // CARD STYLE
   Widget _buildCard({required Widget child}) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(9),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: const Color(0xFFE5E5E5),
+          color: borderColor,
+          width: 0.8,
         ),
-        boxShadow: const [
+        boxShadow: [
           BoxShadow(
-            color: Color(0x10000000),
-            blurRadius: 4,
-            offset: Offset(0, 2),
+            color: Colors.black.withValues(alpha: 0.035),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
@@ -228,6 +279,7 @@ class TrackingScreen extends StatelessWidget {
     );
   }
 
+  // TIMELINE ITEM
   Widget _buildStep({
     required IconData icon,
     required String title,
@@ -237,62 +289,77 @@ class TrackingScreen extends StatelessWidget {
     bool active = false,
     bool last = false,
   }) {
-    final Color color =
-        done || active ? orange : const Color(0xFFBDBDBD);
+    final Color statusColor =
+        done || active ? orange : inactive;
 
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ICON DAN GARIS TIMELINE
           SizedBox(
             width: 28,
             child: Column(
               children: [
                 CircleAvatar(
-                  radius: 10,
-                  backgroundColor: color,
+                  radius: 11,
+                  backgroundColor: done
+                      ? orange
+                      : active
+                          ? softOrange
+                          : const Color(0xFFF0F0F0),
                   child: Icon(
                     icon,
-                    size: 12,
-                    color: Colors.white,
+                    size: 13,
+                    color: done
+                        ? Colors.white
+                        : active
+                            ? orange
+                            : inactive,
                   ),
                 ),
+
                 if (!last)
                   Expanded(
                     child: Container(
                       width: 2,
-                      color: const Color(0xFFE0E0E0),
+                      color: done
+                          ? const Color(0xFFFFCC80)
+                          : const Color(0xFFEEEEEE),
                     ),
                   ),
               ],
             ),
           ),
 
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
 
+          // INFORMASI STATUS
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.only(bottom: 18),
+              padding: const EdgeInsets.only(bottom: 24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'Poppins',
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: dark,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: done || active ? dark : muted,
                     ),
                   ),
-                  const SizedBox(height: 3),
+
+                  const SizedBox(height: 5),
+
                   Text(
                     description,
                     style: const TextStyle(
                       fontFamily: 'Inter',
-                      fontSize: 9,
-                      height: 1.4,
-                      color: dark,
+                      fontSize: 11,
+                      height: 1.45,
+                      color: muted,
                     ),
                   ),
                 ],
@@ -300,18 +367,20 @@ class TrackingScreen extends StatelessWidget {
             ),
           ),
 
-          const SizedBox(width: 4),
+          const SizedBox(width: 6),
 
+          // WAKTU STATUS
           Flexible(
             child: Text(
               time,
               textAlign: TextAlign.end,
               style: TextStyle(
                 fontFamily: 'Inter',
-                fontSize: 8,
-                color: active ? orange : const Color(0xFF666666),
+                fontSize: 10,
+                height: 1.4,
+                color: active ? orange : muted,
                 fontWeight:
-                    active ? FontWeight.bold : FontWeight.normal,
+                    active ? FontWeight.bold : FontWeight.w500,
               ),
             ),
           ),

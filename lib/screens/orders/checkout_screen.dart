@@ -11,10 +11,15 @@ class CheckoutScreen extends StatefulWidget {
 }
 
 class _CheckoutScreenState extends State<CheckoutScreen> {
-  static const Color orange = Color(0xFFFF6200);
-  static const Color primaryOrange = Color(0xFFFF5E00);
-  static const Color bg = Color(0xFFFAF9F9);
-  static const Color dark = Color(0xFF1A1C1C);
+  static const Color orange = Color(0xFFF57C00);
+  static const Color primaryOrange = Color(0xFFF57C00);
+
+  static const Color bg = Color(0xFFFAFAFA);
+  static const Color dark = Color(0xFF292929);
+  static const Color muted = Color(0xFF757575);
+
+  static const Color softOrange = Color(0xFFFFF3E0);
+  static const Color borderColor = Color(0xFFEEEEEE);
 
   final OrderStore store = OrderStore.instance;
   final TextEditingController noteController = TextEditingController();
@@ -72,7 +77,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   children: [
                     Expanded(
                       child: ListView(
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
                         children: [
                           _buildOrderType(),
                           const SizedBox(height: 14),
@@ -132,7 +137,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               width: 220,
               height: 220,
               child: CustomPaint(
-                painter: _EmptyCartPainter(),
+              painter: _EmptyCartPainter(),
               ),
             ),
 
@@ -284,48 +289,58 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Widget _buildOrderType() {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFA21A),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Row(
-        children: [
-          _typeButton('Dine-in', 'Dine-in'),
-          _typeButton('Take Away', 'Take Away'),
-        ],
-      ),
-    );
-  }
+  return Container(
+    padding: const EdgeInsets.all(4),
+    decoration: BoxDecoration(
+      color: const Color(0xFFF1F1F1),
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Row(
+      children: [
+        _typeButton('Dine-in', 'Dine-in'),
+        _typeButton('Take Away', 'Take Away'),
+      ],
+    ),
+  );
+}
 
   Widget _typeButton(String label, String value) {
-    final selected = store.orderType == value;
+  final selected = store.orderType == value;
 
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          store.setOrderType(value);
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 13),
-          decoration: BoxDecoration(
-            color: selected ? Colors.white : Colors.transparent,
-            borderRadius: BorderRadius.circular(5),
-          ),
-          child: Text(
-            label,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontFamily: 'Inter',
-              fontWeight: FontWeight.bold,
-              color: dark,
-            ),
+  return Expanded(
+    child: GestureDetector(
+      onTap: () => store.setOrderType(value),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 13),
+        decoration: BoxDecoration(
+          color: selected ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(9),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 5,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : [],
+        ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 13,
+            fontWeight:
+                selected ? FontWeight.bold : FontWeight.w500,
+            color: selected ? orange : muted,
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildTableCard() {
     return Container(
@@ -381,177 +396,69 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
   }
 
-  Widget _buildCartItem(CartItem item) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: _cardDecoration(),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(5),
-            child: Image.asset(
-              item.menuImage,
-              width: 68,
-              height: 76,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Container(
-                width: 68,
-                height: 76,
-                color: const Color(0xFFFFE0C2),
-                child: const Icon(Icons.local_cafe, color: orange),
+  
+Widget _buildCartItem(CartItem item) {
+  return Container(
+    margin: const EdgeInsets.only(bottom: 12),
+    padding: const EdgeInsets.all(14),
+    decoration: _cardDecoration(),
+    child: Column(
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Image.asset(
+                item.menuImage,
+                width: 82,
+                height: 88,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) =>
+                    Container(
+                  width: 82,
+                  height: 88,
+                  color: softOrange,
+                  child: const Icon(
+                    Icons.local_cafe,
+                    color: orange,
+                    size: 28,
+                  ),
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.menuName,
-                  style: const TextStyle(
-                    fontFamily: 'Poppins',
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${item.temperature}, ${item.sugarLevel}'
-                  '${item.extraShot ? ', Extra Shot (+Rp5.000)' : ''}',
-                  style: const TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 10,
-                    color: Color(0xFF666666),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  rupiah(item.subtotal),
-                  style: const TextStyle(
-                    fontFamily: 'Poppins',
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: () => store.removeItem(item),
-                      child: const Text(
-                        'Hapus',
-                        style: TextStyle(color: dark, fontSize: 12),
-                      ),
-                    ),
-                    _quantityButton(
-                      Icons.remove,
-                      () => store.updateQuantity(item, item.quantity - 1),
-                    ),
-                    Container(
-                      width: 34,
-                      height: 32,
-                      alignment: Alignment.center,
-                      color: const Color(0xFFFFA21A),
-                      child: Text(
-                        '${item.quantity}',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    _quantityButton(
-                      Icons.add,
-                      () => store.updateQuantity(item, item.quantity + 1),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _quantityButton(IconData icon, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        width: 32,
-        height: 32,
-        decoration: BoxDecoration(
-          border: Border.all(color: orange, width: 1.5),
-          borderRadius: BorderRadius.circular(3),
-        ),
-        child: Icon(icon, size: 17),
-      ),
-    );
-  }
-
-  Widget _buildNote() {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: _cardDecoration(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Catatan Pesanan Dapur:',
-            style: TextStyle(fontFamily: 'Inter', fontSize: 13),
-          ),
-          TextField(
-            controller: noteController,
-            onChanged: (value) => store.kitchenNote = value,
-            decoration: const InputDecoration(
-              hintText: 'Contoh: es sedikit, gula dipisah...',
-              border: InputBorder.none,
-              isDense: true,
-            ),
-            maxLines: 2,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPayment(String value, String description) {
-    final selected = store.paymentMethod == value;
-
-    return GestureDetector(
-      onTap: () {
-        store.setPaymentMethod(value);
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 9),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: selected ? orange : const Color(0xFFF0F0F0),
-          borderRadius: BorderRadius.circular(7),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              selected ? Icons.radio_button_checked : Icons.circle_outlined,
-              color: selected ? dark : const Color(0xFFCCCCCC),
-            ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    value,
+                    item.menuName,
                     style: const TextStyle(
                       fontFamily: 'Poppins',
                       fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: dark,
                     ),
                   ),
+                  const SizedBox(height: 5),
                   Text(
-                    description,
+                    '${item.temperature}, ${item.sugarLevel}'
+                    '${item.extraShot ? ', Extra Shot' : ''}',
                     style: const TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 11,
+                      color: muted,
+                    ),
+                  ),
+                  const SizedBox(height: 9),
+                  Text(
+                    rupiah(item.subtotal),
+                    style: const TextStyle(
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: orange,
                     ),
                   ),
                 ],
@@ -559,39 +466,247 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
+        const SizedBox(height: 12),
+        const Divider(height: 1, color: borderColor),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            TextButton.icon(
+              onPressed: () => store.removeItem(item),
+              icon: const Icon(Icons.delete_outline, size: 17),
+              label: const Text('Hapus'),
+              style: TextButton.styleFrom(
+                foregroundColor: muted,
+                padding: EdgeInsets.zero,
+                textStyle: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            const Spacer(),
+            _quantityButton(
+              Icons.remove,
+              () => store.updateQuantity(item, item.quantity - 1),
+            ),
+            Container(
+              width: 38,
+              height: 34,
+              alignment: Alignment.center,
+              child: Text(
+                '${item.quantity}',
+                style: const TextStyle(
+                  fontFamily: 'Poppins',
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+            _quantityButton(
+              Icons.add,
+              () => store.updateQuantity(item, item.quantity + 1),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
 
-  Widget _buildSummary() {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: _cardDecoration(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'RINGKASAN PEMBAYARAN',
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontWeight: FontWeight.bold,
+
+  
+Widget _quantityButton(IconData icon, VoidCallback onTap) {
+  return Material(
+    color: softOrange,
+    borderRadius: BorderRadius.circular(8),
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: SizedBox(
+        width: 34,
+        height: 34,
+        child: Icon(
+          icon,
+          size: 17,
+          color: orange,
+        ),
+      ),
+    ),
+  );
+}
+
+
+  
+Widget _buildNote() {
+  return Container(
+    padding: const EdgeInsets.all(14),
+    decoration: _cardDecoration(),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(
+              Icons.edit_note,
+              color: orange,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            const Text(
+              'Catatan Pesanan',
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+                color: dark,
+              ),
+            ),
+            const Spacer(),
+            const Text(
+              'Opsional',
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 10,
+                color: muted,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: noteController,
+          onChanged: (value) => store.kitchenNote = value,
+          maxLines: 2,
+          style: const TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 12,
+            color: dark,
+          ),
+          decoration: InputDecoration(
+            hintText: 'Contoh: es sedikit, gula dipisah...',
+            hintStyle: const TextStyle(
               fontSize: 12,
-              color: Color(0xFF666666),
+              color: Color(0xFFAAAAAA),
+            ),
+            filled: true,
+            fillColor: const Color(0xFFFAFAFA),
+            contentPadding: const EdgeInsets.all(12),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(9),
+              borderSide: BorderSide.none,
             ),
           ),
-          const SizedBox(height: 14),
-          _summaryRow('Subtotal', rupiah(store.cartTotal)),
-          _summaryRow('Biaya Layanan', rupiah(0)),
-          const Divider(height: 24),
-          _summaryRow(
-            'Total Pembayaran',
-            rupiah(store.cartTotal),
-            bold: true,
+        ),
+      ],
+    ),
+  );
+}
+
+
+  
+Widget _buildPayment(String value, String description) {
+  final selected = store.paymentMethod == value;
+
+  return GestureDetector(
+    onTap: () => store.setPaymentMethod(value),
+    child: AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 14,
+        vertical: 14,
+      ),
+      decoration: BoxDecoration(
+        color: selected ? softOrange : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: selected ? orange : borderColor,
+          width: selected ? 1.3 : 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            selected
+                ? Icons.radio_button_checked
+                : Icons.radio_button_off,
+            color: selected ? orange : const Color(0xFFBDBDBD),
+            size: 21,
           ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: dark,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  description,
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 11,
+                    color: muted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (selected)
+            const Icon(
+              Icons.check_circle,
+              color: orange,
+              size: 18,
+            ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
+
+
+ 
+Widget _buildSummary() {
+  return Container(
+    padding: const EdgeInsets.all(16),
+    decoration: _cardDecoration(),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Ringkasan Pembayaran',
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+            color: dark,
+          ),
+        ),
+        const SizedBox(height: 16),
+        _summaryRow('Subtotal', rupiah(store.cartTotal)),
+        _summaryRow('Biaya Layanan', rupiah(0)),
+        const Padding(
+          padding: EdgeInsets.symmetric(vertical: 8),
+          child: Divider(color: borderColor),
+        ),
+        _summaryRow(
+          'Total Pembayaran',
+          rupiah(store.cartTotal),
+          bold: true,
+        ),
+      ],
+    ),
+  );
+}
+
 
   Widget _summaryRow(String label, String price, {bool bold = false}) {
     return Padding(
@@ -621,34 +736,52 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
-  Widget _buildPayButton() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
-      color: bg,
+  
+Widget _buildPayButton() {
+  return SafeArea(
+    top: false,
+    child: Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: const Border(
+          top: BorderSide(color: borderColor),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, -3),
+          ),
+        ],
+      ),
       child: SizedBox(
         width: double.infinity,
-        height: 50,
+        height: 52,
         child: ElevatedButton(
           style: ElevatedButton.styleFrom(
             backgroundColor: orange,
             foregroundColor: Colors.white,
+            elevation: 0,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(5),
+              borderRadius: BorderRadius.circular(12),
             ),
           ),
           onPressed: store.cart.isEmpty ? null : _confirmOrder,
           child: Text(
-            'BAYAR & BUAT PESANAN (${rupiah(store.cartTotal)})  →',
+            'Bayar & Buat Pesanan  •  ${rupiah(store.cartTotal)}',
             style: const TextStyle(
               fontFamily: 'Poppins',
-              fontWeight: FontWeight.bold,
-              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
             ),
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
+
 
   Future<void> _confirmOrder() async {
     // Jika metode QRIS, langsung arahkan ke Kode Pembayaran (QRIS Screen)
@@ -715,20 +848,26 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     if (mounted) Navigator.pop(context);
   }
 
-  BoxDecoration _cardDecoration() {
-    return BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(7),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: 0.12),
-          blurRadius: 4,
-          offset: const Offset(0, 2),
-        ),
-      ],
-    );
-  }
+  
+BoxDecoration _cardDecoration() {
+  return BoxDecoration(
+    color: Colors.white,
+    borderRadius: BorderRadius.circular(12),
+    border: Border.all(
+      color: borderColor,
+      width: 0.8,
+    ),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black.withValues(alpha: 0.035),
+        blurRadius: 10,
+        offset: const Offset(0, 3),
+      ),
+    ],
+  );
 }
+}
+
 
 // PAINTER ILUSTRASI KERANJANG KOSONG (SESUAI GAMBAR REFERENSI)
 class _EmptyCartPainter extends CustomPainter {

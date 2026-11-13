@@ -11,7 +11,7 @@ class ForgotPasswordPage extends StatefulWidget {
 }
 
 class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
-  static const Color orange = Color(0xFFFF5E00);
+  static const Color orange = Color(0xFFF57C00);
   static const Color dark = Color(0xFF1A1C1C);
   static const Color bg = Color(0xFFFAF9F9);
   static const Color grey = Color(0xFF666666);

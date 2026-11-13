@@ -133,7 +133,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                 child: ElevatedButton(
                   onPressed: _nextPage,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFF79F1A),
+                    backgroundColor: const Color(0xFFF57C00),
                     foregroundColor: const Color(0xFFFAF9F9),
                     elevation: 0,
                     shape: RoundedRectangleBorder(
@@ -181,7 +181,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
       height: 7,
       decoration: BoxDecoration(
         color: active
-            ? const Color(0xFFF79F1A)
+            ? const Color(0xFFF57C00)
             : const Color(0xFFD9D9D9),
         borderRadius: BorderRadius.circular(10),
       ),

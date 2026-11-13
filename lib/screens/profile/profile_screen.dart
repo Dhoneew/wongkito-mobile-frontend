@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'edit_profile_screen.dart';
 import '../notification/notification_screen.dart';
+import '../login/login_page.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -80,11 +81,67 @@ class ProfileScreen extends StatelessWidget {
             );
           }),
           _buildItem(context, Icons.help_outline, 'Bantuan'),
-          _buildItem(context, Icons.logout, 'Keluar'),
+          _buildItem(
+            context,
+            Icons.logout,
+            'Keluar',
+            onTap: () => _showLogoutDialog(context),
+          ),
         ],
       ),
     );
   }
+
+  static Future<void> _showLogoutDialog(BuildContext context) async {
+  final shouldLogout = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) {
+      return AlertDialog(
+        title: const Text(
+          'Konfirmasi Keluar',
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: const Text(
+          'Apakah Anda yakin ingin keluar dari akun Wong Kito?',
+          style: TextStyle(fontFamily: 'Inter'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dialogContext, false);
+            },
+            child: const Text(
+              'Batal',
+              style: TextStyle(color: Colors.grey),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: orange,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () {
+              Navigator.pop(dialogContext, true);
+            },
+            child: const Text('Keluar'),
+          ),
+        ],
+      );
+    },
+  );
+
+  if (shouldLogout == true && context.mounted) {
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (context) => const LoginPage(),
+      ),
+      (route) => false,
+    );
+  }
+}
 
   static Widget _buildItem(BuildContext context, IconData icon, String title, {VoidCallback? onTap}) {
     return Container(
