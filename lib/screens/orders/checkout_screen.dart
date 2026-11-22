@@ -1,5 +1,9 @@
+import '../tracking/tracking_screen.dart';
 import 'package:flutter/material.dart';
+
 import '../../data/order_store.dart';
+import '../../features/orders/models/cart_item.dart';
+import '../../features/orders/viewmodels/order_viewmodel.dart';
 import '../home/promo_detail_screen.dart';
 import 'payment_screen.dart';
 
@@ -21,13 +25,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   static const Color softOrange = Color(0xFFFFF3E0);
   static const Color borderColor = Color(0xFFEEEEEE);
 
-  final OrderStore store = OrderStore.instance;
+  final OrderViewModel viewModel = OrderStore.instance.viewModel;
   final TextEditingController noteController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    noteController.text = store.kitchenNote;
+    noteController.text = viewModel.kitchenNote;
   }
 
   @override
@@ -46,9 +50,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: store,
+      animation: viewModel,
       builder: (context, _) {
-        final isEmpty = store.cart.isEmpty;
+        final isEmpty = viewModel.cart.isEmpty;
 
         return Scaffold(
           backgroundColor: bg,
@@ -81,11 +85,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         children: [
                           _buildOrderType(),
                           const SizedBox(height: 14),
-                          if (store.orderType == 'Dine-in')
+                          if (viewModel.orderType == 'Dine-in')
                             _buildTableCard(),
                           const SizedBox(height: 22),
                           Text(
-                            'Daftar Menu (${store.cart.length} Item)',
+                            'Daftar Menu (${viewModel.cart.length} Item)',
                             style: const TextStyle(
                               fontFamily: 'Poppins',
                               fontSize: 16,
@@ -94,7 +98,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             ),
                           ),
                           const SizedBox(height: 12),
-                          ...store.cart.map(_buildCartItem),
+                          ...viewModel.cart.map(_buildCartItem),
                           const SizedBox(height: 14),
                           _buildNote(),
                           const SizedBox(height: 24),
@@ -305,11 +309,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 }
 
   Widget _typeButton(String label, String value) {
-  final selected = store.orderType == value;
+  final selected = viewModel.orderType == value;
 
   return Expanded(
     child: GestureDetector(
-      onTap: () => store.setOrderType(value),
+      onTap: () => viewModel.setOrderType(value),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(vertical: 13),
@@ -356,7 +360,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               children: [
                 const Text('Lokasi Duduk',
                     style: TextStyle(fontFamily: 'Inter', fontSize: 12)),
-                Text(store.tableNumber,
+                Text(viewModel.tableNumber,
                     style: const TextStyle(
                       fontFamily: 'Poppins',
                       fontWeight: FontWeight.bold,
@@ -392,7 +396,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
 
     if (selected != null) {
-      store.setTableNumber(selected);
+      viewModel.setTableNumber(selected);
     }
   }
 
@@ -472,7 +476,7 @@ Widget _buildCartItem(CartItem item) {
         Row(
           children: [
             TextButton.icon(
-              onPressed: () => store.removeItem(item),
+              onPressed: () => viewModel.removeItem(item),
               icon: const Icon(Icons.delete_outline, size: 17),
               label: const Text('Hapus'),
               style: TextButton.styleFrom(
@@ -488,7 +492,7 @@ Widget _buildCartItem(CartItem item) {
             const Spacer(),
             _quantityButton(
               Icons.remove,
-              () => store.updateQuantity(item, item.quantity - 1),
+              () => viewModel.updateQuantity(item, item.quantity - 1),
             ),
             Container(
               width: 38,
@@ -505,7 +509,7 @@ Widget _buildCartItem(CartItem item) {
             ),
             _quantityButton(
               Icons.add,
-              () => store.updateQuantity(item, item.quantity + 1),
+              () => viewModel.updateQuantity(item, item.quantity + 1),
             ),
           ],
         ),
@@ -576,7 +580,7 @@ Widget _buildNote() {
         const SizedBox(height: 10),
         TextField(
           controller: noteController,
-          onChanged: (value) => store.kitchenNote = value,
+          onChanged: (value) => viewModel.setKitchenNote(value),
           maxLines: 2,
           style: const TextStyle(
             fontFamily: 'Inter',
@@ -606,10 +610,10 @@ Widget _buildNote() {
 
   
 Widget _buildPayment(String value, String description) {
-  final selected = store.paymentMethod == value;
+  final selected = viewModel.paymentMethod == value;
 
   return GestureDetector(
-    onTap: () => store.setPaymentMethod(value),
+    onTap: () => viewModel.setPaymentMethod(value),
     child: AnimatedContainer(
       duration: const Duration(milliseconds: 180),
       margin: const EdgeInsets.only(bottom: 10),
@@ -691,7 +695,7 @@ Widget _buildSummary() {
           ),
         ),
         const SizedBox(height: 16),
-        _summaryRow('Subtotal', rupiah(store.cartTotal)),
+        _summaryRow('Subtotal', rupiah(viewModel.cartTotal)),
         _summaryRow('Biaya Layanan', rupiah(0)),
         const Padding(
           padding: EdgeInsets.symmetric(vertical: 8),
@@ -699,7 +703,7 @@ Widget _buildSummary() {
         ),
         _summaryRow(
           'Total Pembayaran',
-          rupiah(store.cartTotal),
+          rupiah(viewModel.cartTotal),
           bold: true,
         ),
       ],
@@ -767,9 +771,9 @@ Widget _buildPayButton() {
               borderRadius: BorderRadius.circular(12),
             ),
           ),
-          onPressed: store.cart.isEmpty ? null : _confirmOrder,
+          onPressed: viewModel.cart.isEmpty ? null : _confirmOrder,
           child: Text(
-            'Bayar & Buat Pesanan  •  ${rupiah(store.cartTotal)}',
+            'Bayar & Buat Pesanan  •  ${rupiah(viewModel.cartTotal)}',
             style: const TextStyle(
               fontFamily: 'Poppins',
               fontWeight: FontWeight.w700,
@@ -784,69 +788,84 @@ Widget _buildPayButton() {
 
 
   Future<void> _confirmOrder() async {
-    // Jika metode QRIS, langsung arahkan ke Kode Pembayaran (QRIS Screen)
-    if (store.paymentMethod == 'QRIS') {
-      final nextOrderId =
-          'WK-${(store.orders.length + 1).toString().padLeft(3, '0')}';
-      final totalAmount = store.cartTotal;
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => PaymentCodeScreen(
-            orderId: nextOrderId,
-            totalAmount: totalAmount,
-          ),
-        ),
-      );
-      return;
-    }
+  // QRIS
+  if (viewModel.paymentMethod == 'QRIS') {
+    final totalAmount = viewModel.cartTotal;
+    final orderId = viewModel.checkout();
 
-    // Untuk metode lain (Cash / E-Wallet langsung)
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Buat Pesanan?'),
-        content: Text(
-          'Total ${rupiah(store.cartTotal)} melalui ${store.paymentMethod}. '
-          'Lanjutkan membuat pesanan?',
+    if (orderId == null || !mounted) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PaymentCodeScreen(
+          orderId: orderId,
+          totalAmount: totalAmount,
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Batal'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Konfirmasi'),
-          ),
-        ],
       ),
     );
 
-    if (confirm != true || !mounted) return;
-
-    store.checkout();
-
-    await showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        icon: const Icon(Icons.check_circle, color: Colors.green, size: 48),
-        title: const Text('Pesanan Berhasil Dibuat!'),
-        content: const Text(
-          'Pesanan kamu sudah tercatat. Buka menu Pesanan untuk melihat statusnya.',
-        ),
-        actions: [
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Selesai'),
-          ),
-        ],
-      ),
-    );
-
-    if (mounted) Navigator.pop(context);
+    return;
   }
+
+  // Cash / E-Wallet
+  final confirm = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Buat Pesanan?'),
+      content: Text(
+        'Total ${rupiah(viewModel.cartTotal)} melalui ${viewModel.paymentMethod}. '
+        'Lanjutkan membuat pesanan?',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Batal'),
+        ),
+        ElevatedButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text('Konfirmasi'),
+        ),
+      ],
+    ),
+  );
+
+  if (confirm != true || !mounted) return;
+
+  final orderId = viewModel.checkout();
+
+  if (orderId == null || !mounted) return;
+
+  await showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => AlertDialog(
+      icon: const Icon(Icons.check_circle, color: Colors.green, size: 48),
+      title: const Text('Pesanan Berhasil Dibuat!'),
+      content: const Text(
+        'Pesanan kamu sudah tercatat. Buka menu Pesanan untuk melihat statusnya.',
+      ),
+      actions: [
+        ElevatedButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Selesai'),
+        ),
+      ],
+    ),
+  );
+
+  if (!mounted) return;
+
+  Navigator.pushReplacement(
+    context,
+    MaterialPageRoute(
+      builder: (_) => TrackingScreen(
+        orderId: orderId,
+        total: viewModel.orders.first.price,
+      ),
+    ),
+  );
+}
 
   
 BoxDecoration _cardDecoration() {

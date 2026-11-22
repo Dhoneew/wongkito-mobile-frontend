@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../features/dashboard/repositories/dashboard_repository.dart';
+import '../../features/dashboard/viewmodels/dashboard_viewmodel.dart';
+
 import 'promo_detail_screen.dart';
 import 'search_screen.dart';
 import '../menu/menu_detail_screen.dart';
@@ -20,6 +23,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
   static const Color secondaryColor = Color(0xFFEAEAEA);
 
   String selectedCategory = 'Semua';
+
+  late final DashboardViewModel viewModel;
+
+  @override
+  void dispose() {
+    viewModel.removeListener(_onViewModelChanged);
+    viewModel.dispose();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    viewModel = DashboardViewModel(DashboardRepository());
+    viewModel.addListener(_onViewModelChanged);
+  }
+
+  void _onViewModelChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -74,11 +100,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     const SizedBox(height: 2),
                     Row(
                       children: const [
-                        Icon(
-                          Icons.location_on,
-                          size: 16,
-                          color: textColor,
-                        ),
+                        Icon(Icons.location_on, size: 16, color: textColor),
                         SizedBox(width: 4),
                         Text(
                           'Sawojajar',
@@ -132,9 +154,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (context) => const SearchScreen(),
-                ),
+                MaterialPageRoute(builder: (context) => const SearchScreen()),
               );
             },
             borderRadius: BorderRadius.circular(10),
@@ -212,10 +232,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          Image.asset(
-            'assets/images/ayam_geprek.png',
-            fit: BoxFit.cover,
-          ),
+          Image.asset('assets/images/ayam_geprek.png', fit: BoxFit.cover),
           // Gradient halus bawah agar teks terbaca jelas seperti pada gambar
           Container(
             decoration: BoxDecoration(
@@ -351,11 +368,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildCategoryChip(String title) {
-    final isActive = selectedCategory == title;
+    final isActive = viewModel.selectedCategory == title;
 
     return GestureDetector(
       onTap: () {
-        setState(() => selectedCategory = title);
+        viewModel.selectCategory(title);
       },
       child: Container(
         margin: const EdgeInsets.only(right: 8),
@@ -414,25 +431,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         const SizedBox(height: 8),
         Row(
-          children: [
-            Expanded(
-              child: _buildMenuCard(
-                context: context,
-                image: 'assets/images/kopi_susu.png',
-                name: 'Kopi Susu',
-                price: 'Rp. 18.000',
+          children: viewModel.recommendedMenus.map((menu) {
+            return Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(right: 10),
+                child: _buildMenuCard(
+                  context: context,
+                  image: menu.image,
+                  name: menu.name,
+                  price: 'Rp. ${menu.price.toString()}',
+                ),
               ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _buildMenuCard(
-                context: context,
-                image: 'assets/images/matcha_latte.png',
-                name: 'Matcha Latte',
-                price: 'Rp. 20.000',
-              ),
-            ),
-          ],
+            );
+          }).toList(),
         ),
       ],
     );
@@ -466,10 +477,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             borderRadius: BorderRadius.circular(8),
             child: AspectRatio(
               aspectRatio: 1.15,
-              child: Image.asset(
-                image,
-                fit: BoxFit.cover,
-              ),
+              child: Image.asset(image, fit: BoxFit.cover),
             ),
           ),
           const SizedBox(height: 8),
@@ -555,11 +563,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         children: [
           const Padding(
             padding: EdgeInsets.only(top: 2),
-            child: Icon(
-              Icons.smart_toy,
-              color: orange,
-              size: 26,
-            ),
+            child: Icon(Icons.smart_toy, color: orange, size: 26),
           ),
           const SizedBox(width: 10),
           const Expanded(

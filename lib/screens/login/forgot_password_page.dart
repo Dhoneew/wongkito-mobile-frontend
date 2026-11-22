@@ -1,3 +1,5 @@
+import '../../features/auth/repositories/auth_repository.dart';
+import '../../features/auth/viewmodels/auth_viewmodel.dart';
 import 'package:flutter/material.dart';
 
 // ==========================================
@@ -18,27 +20,57 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
   final _emailController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-  bool _isLoading = false;
+
+  late final AuthViewModel viewModel;
+
+  @override
+  void initState() {
+    super.initState();
+    viewModel = AuthViewModel(AuthRepository());
+    viewModel.addListener(_onAuthChanged);
+  }
+
+  void _onAuthChanged() {
+    if (mounted) setState(() {});
+  }
 
   @override
   void dispose() {
+    viewModel.removeListener(_onAuthChanged);
+    viewModel.dispose();
     _emailController.dispose();
     super.dispose();
   }
 
-  void _sendLink() async {
+  Future<void> _sendLink() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 800));
-    if (!mounted) return;
-    setState(() => _isLoading = false);
+    FocusScope.of(context).unfocus();
 
-    // Navigasi ke Halaman Reset Password (Step 2)
+    final success = await viewModel.sendResetLink(
+      _emailController.text.trim(),
+    );
+
+    if (!mounted) return;
+
+    if (!success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            viewModel.errorMessage ?? 'Gagal mengirim link reset password.',
+          ),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => ResetPasswordPage(email: _emailController.text.trim()),
+        builder: (_) => ResetPasswordPage(
+          email: _emailController.text.trim(),
+        ),
       ),
     );
   }
@@ -141,7 +173,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   width: double.infinity,
                   height: 46,
                   child: ElevatedButton(
-                    onPressed: _isLoading ? null : _sendLink,
+                    onPressed: viewModel.isLoading ? null : _sendLink,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: orange,
                       foregroundColor: Colors.white,
@@ -150,7 +182,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                         borderRadius: BorderRadius.circular(6),
                       ),
                     ),
-                    child: _isLoading
+                    child: viewModel.isLoading
                         ? const SizedBox(
                             width: 20,
                             height: 20,
@@ -243,43 +275,61 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
 
+  late final AuthViewModel viewModel;
+
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
-  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    viewModel = AuthViewModel(AuthRepository());
+    viewModel.addListener(_onAuthChanged);
+  }
+
+  void _onAuthChanged() {
+    if (mounted) setState(() {});
+  }
 
   @override
   void dispose() {
+    viewModel.removeListener(_onAuthChanged);
+    viewModel.dispose();
     _passwordController.dispose();
     _confirmController.dispose();
     super.dispose();
   }
 
-  // Live Validations
-  bool get _hasMin8Chars => _passwordController.text.length >= 8;
-  bool get _hasLetterAndNumber {
-    final text = _passwordController.text;
-    final hasLetter = RegExp(r'[A-Za-z]').hasMatch(text);
-    final hasNumber = RegExp(r'[0-9]').hasMatch(text);
-    return hasLetter && hasNumber;
-  }
-  bool get _isDifferentAndConfirmed {
-    final pass = _passwordController.text;
-    final conf = _confirmController.text;
-    return pass.isNotEmpty && conf.isNotEmpty && pass == conf;
-  }
+  // Live validations melalui ViewModel
+  bool get _hasMin8Chars =>
+      _passwordController.text.length >= 8;
 
-  void _savePassword() async {
-    if (!_hasMin8Chars || !_hasLetterAndNumber) {
+  bool get _hasLetterAndNumber =>
+      viewModel.isPasswordStrong(_passwordController.text);
+
+  bool get _isDifferentAndConfirmed =>
+      viewModel.passwordsMatch(
+        _passwordController.text,
+        _confirmController.text,
+      );
+
+  Future<void> _savePassword() async {
+    if (!viewModel.isPasswordStrong(_passwordController.text)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Password belum memenuhi seluruh kriteria keamanan'),
+          content: Text(
+            'Password belum memenuhi seluruh kriteria keamanan',
+          ),
           backgroundColor: Colors.redAccent,
         ),
       );
       return;
     }
 
-    if (_passwordController.text != _confirmController.text) {
+    if (!viewModel.passwordsMatch(
+      _passwordController.text,
+      _confirmController.text,
+    )) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Konfirmasi password tidak cocok!'),
@@ -289,17 +339,35 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
       return;
     }
 
-    setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 900));
-    if (!mounted) return;
-    setState(() => _isLoading = false);
+    FocusScope.of(context).unfocus();
 
-    // Navigasi ke Halaman Berhasil Reset (Step 3)
+    final success = await viewModel.resetPassword(
+      email: widget.email,
+      newPassword: _passwordController.text,
+    );
+
+    if (!mounted) return;
+
+    if (!success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            viewModel.errorMessage ?? 'Gagal mereset password.',
+          ),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (_) => const ResetSuccessPage()),
+      MaterialPageRoute(
+        builder: (_) => const ResetSuccessPage(),
+      ),
     );
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -390,7 +458,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                 width: double.infinity,
                 height: 46,
                 child: ElevatedButton(
-                  onPressed: _isLoading ? null : _savePassword,
+                  onPressed: viewModel.isLoading ? null : _savePassword,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: orange,
                     foregroundColor: Colors.white,
@@ -399,7 +467,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                       borderRadius: BorderRadius.circular(6),
                     ),
                   ),
-                  child: _isLoading
+                  child: viewModel.isLoading
                       ? const SizedBox(
                           width: 20,
                           height: 20,

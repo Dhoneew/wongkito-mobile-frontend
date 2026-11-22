@@ -1,7 +1,10 @@
+import '../../data/order_store.dart';
+import '../../features/orders/viewmodels/tracking_viewmodel.dart';
+import '../../main.dart';
 
 import 'package:flutter/material.dart';
 
-class TrackingScreen extends StatelessWidget {
+class TrackingScreen extends StatefulWidget {
   final String orderId;
   final int total;
 
@@ -11,6 +14,32 @@ class TrackingScreen extends StatelessWidget {
     this.total = 61000,
   });
 
+  @override
+  State<TrackingScreen> createState() => _TrackingScreenState();
+}
+
+class _TrackingScreenState extends State<TrackingScreen> {
+  late final TrackingViewModel viewModel;
+
+  @override
+  void initState() {
+    super.initState();
+
+    viewModel = TrackingViewModel(
+      repository: OrderStore.instance.viewModel.repository,
+      orderId: widget.orderId,
+    );
+  }
+
+  @override
+  void dispose() {
+    viewModel.dispose();
+    super.dispose();
+  }
+
+  String get orderId => widget.orderId;
+
+  int get total => viewModel.isOrderFound ? viewModel.total : widget.total;
   // COLOR PALETTE WONG KITO
   static const Color orange = Color(0xFFF57C00);
   static const Color softOrange = Color(0xFFFFF3E0);
@@ -21,237 +50,303 @@ class TrackingScreen extends StatelessWidget {
   static const Color inactive = Color(0xFFBDBDBD);
 
   String rupiah(int value) {
-    return 'Rp${value.toString().replaceAllMapped(
-          RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
-          (match) => '${match[1]}.',
-        )}';
+    return 'Rp${value.toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (match) => '${match[1]}.')}';
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: background,
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-          children: [
-            // HEADER
-            Row(
+    return AnimatedBuilder(
+      animation: viewModel,
+      builder: (context, child) {
+        return Scaffold(
+          backgroundColor: background,
+          body: SafeArea(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
               children: [
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(
-                    Icons.arrow_back_ios_new,
-                    size: 19,
-                    color: dark,
-                  ),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(
-                    minWidth: 32,
-                    minHeight: 40,
+                // HEADER
+                Row(
+                  children: [
+                    IconButton(
+                      onPressed: () {
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                const MainNavigation(initialIndex: 2),
+                          ),
+                          (route) => false,
+                        );
+                      },
+                      icon: const Icon(
+                        Icons.arrow_back_ios_new,
+                        size: 19,
+                        color: dark,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Lacak Pesanan #$orderId',
+                        style: const TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: dark,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 16),
+
+                // AI ESTIMASI WAKTU
+                _buildCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.smart_toy, color: orange, size: 23),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'AI Estimasi Waktu',
+                              style: TextStyle(
+                                fontFamily: 'Poppins',
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                color: dark,
+                              ),
+                            ),
+                          ),
+                          Icon(Icons.auto_awesome, color: orange, size: 17),
+                        ],
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      const Text(
+                        'Perkiraan selesai dalam 8–12 menit. '
+                        'Estimasi ditampilkan berdasarkan antrean pesanan, '
+                        'kapasitas barista, dan tingkat kesulitan menu.',
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 12,
+                          height: 1.5,
+                          color: muted,
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: const LinearProgressIndicator(
+                          value: 0.65,
+                          minHeight: 7,
+                          color: orange,
+                          backgroundColor: Color(0xFFEEEEEE),
+                        ),
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      const Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Masuk: 14:10',
+                            style: TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 10,
+                              color: muted,
+                            ),
+                          ),
+                          Text(
+                            'Estimasi: 14:22 WIB',
+                            style: TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: dark,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Lacak Pesanan #$orderId',
-                    style: const TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: dark,
+
+                const SizedBox(height: 16),
+
+                // PROGRES PESANAN
+                _buildCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Progres Pesanan',
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                          color: dark,
+                        ),
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      _buildStep(
+                        icon: Icons.check,
+                        title: 'Pesanan Diterima',
+                        description: 'Pesanan berhasil diterima oleh sistem',
+                        time: 'Selesai',
+                        done: true,
+                      ),
+
+                      _buildStep(
+                        icon: Icons.local_cafe,
+                        title: 'Diproses Barista',
+                        description: 'Pesanan sedang disiapkan oleh barista',
+                        time: viewModel.isProcessing
+                            ? 'Sedang Diproses'
+                            : viewModel.isReady || viewModel.isCompleted
+                            ? 'Selesai'
+                            : 'Menunggu',
+                        done: viewModel.isReady || viewModel.isCompleted,
+                        active: viewModel.isProcessing,
+                      ),
+
+                      _buildStep(
+                        icon: Icons.shopping_bag,
+                        title: 'Siap Diantar',
+                        description: 'Pesanan siap diserahkan kepada pelanggan',
+                        time: viewModel.isReady
+                            ? 'Siap Diantar'
+                            : viewModel.isCompleted
+                            ? 'Selesai'
+                            : 'Menunggu',
+                        done: viewModel.isCompleted,
+                        active: viewModel.isReady,
+                      ),
+
+                      _buildStep(
+                        icon: Icons.check_circle,
+                        title: 'Pesanan Selesai',
+                        description: 'Pesanan telah selesai',
+                        time: viewModel.isCompleted ? 'Selesai' : 'Menunggu',
+                        active: viewModel.isCompleted,
+                        last: true,
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // DETAIL INFORMASI PESANAN
+                if (viewModel.isOrderFound) ...[
+                  _buildCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Detail Pesanan',
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                            color: dark,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+
+                        _buildInfoRow('Status', viewModel.status),
+
+                        _buildInfoRow('Jenis Pesanan', viewModel.orderType),
+
+                        if (viewModel.tableNumber.isNotEmpty)
+                          _buildInfoRow('Nomor Meja', viewModel.tableNumber),
+
+                        _buildInfoRow('Pembayaran', viewModel.paymentMethod),
+                      ],
                     ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+
+                // TOTAL PESANAN
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                  decoration: BoxDecoration(
+                    color: softOrange,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFFFE0B2)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Total Pesanan',
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: dark,
+                        ),
+                      ),
+                      Text(
+                        rupiah(total),
+                        style: const TextStyle(
+                          fontFamily: 'Poppins',
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: orange,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
+          ),
+        ); // Scaffold
+      },
+    ); // AnimatedBuilder
+  } // build
 
-            const SizedBox(height: 16),
-
-            // AI ESTIMASI WAKTU
-            _buildCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Row(
-                    children: [
-                      Icon(
-                        Icons.smart_toy,
-                        color: orange,
-                        size: 23,
-                      ),
-                      SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          'AI Estimasi Waktu',
-                          style: TextStyle(
-                            fontFamily: 'Poppins',
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                            color: dark,
-                          ),
-                        ),
-                      ),
-                      Icon(
-                        Icons.auto_awesome,
-                        color: orange,
-                        size: 17,
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 10),
-
-                  const Text(
-                    'Perkiraan selesai dalam 8–12 menit. '
-                    'Estimasi ditampilkan berdasarkan antrean pesanan, '
-                    'kapasitas barista, dan tingkat kesulitan menu.',
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 12,
-                      height: 1.5,
-                      color: muted,
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
-                    child: const LinearProgressIndicator(
-                      value: 0.65,
-                      minHeight: 7,
-                      color: orange,
-                      backgroundColor: Color(0xFFEEEEEE),
-                    ),
-                  ),
-
-                  const SizedBox(height: 10),
-
-                  const Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Masuk: 14:10',
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 10,
-                          color: muted,
-                        ),
-                      ),
-                      Text(
-                        'Estimasi: 14:22 WIB',
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: dark,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 12,
+              color: muted,
+            ),
+          ),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: dark,
               ),
             ),
-
-            const SizedBox(height: 16),
-
-            // PROGRES PESANAN
-            _buildCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Progres Pesanan',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                      color: dark,
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  _buildStep(
-                    icon: Icons.check,
-                    title: 'Pesanan Diterima Barista',
-                    description:
-                        'Kasir mengonfirmasi pembayaran QRIS',
-                    time: '14:10 WIB',
-                    done: true,
-                  ),
-
-                  _buildStep(
-                    icon: Icons.local_cafe,
-                    title: 'Diproses Barista',
-                    description:
-                        'Pesanan sedang disiapkan oleh barista',
-                    time: 'Sedang Diproses',
-                    active: true,
-                  ),
-
-                  _buildStep(
-                    icon: Icons.shopping_bag,
-                    title: 'Siap Diantar ke Meja 05',
-                    description:
-                        'Pesanan akan diantarkan langsung ke meja',
-                    time: 'Menunggu',
-                  ),
-
-                  _buildStep(
-                    icon: Icons.check_circle,
-                    title: 'Selesai Dinikmati',
-                    description:
-                        'Selamat menikmati pesanan Anda',
-                    time: 'Menunggu',
-                    last: true,
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // TOTAL PESANAN
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 14,
-              ),
-              decoration: BoxDecoration(
-                color: softOrange,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: const Color(0xFFFFE0B2),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Total Pesanan',
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: dark,
-                    ),
-                  ),
-                  Text(
-                    rupiah(total),
-                    style: const TextStyle(
-                      fontFamily: 'Poppins',
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: orange,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -263,10 +358,7 @@ class TrackingScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: borderColor,
-          width: 0.8,
-        ),
+        border: Border.all(color: borderColor, width: 0.8),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.035),
@@ -289,8 +381,8 @@ class TrackingScreen extends StatelessWidget {
     bool active = false,
     bool last = false,
   }) {
-    final Color statusColor =
-        done || active ? orange : inactive;
+    //final Color statusColor =
+    //done || active ? orange : inactive;
 
     return IntrinsicHeight(
       child: Row(
@@ -306,16 +398,16 @@ class TrackingScreen extends StatelessWidget {
                   backgroundColor: done
                       ? orange
                       : active
-                          ? softOrange
-                          : const Color(0xFFF0F0F0),
+                      ? softOrange
+                      : const Color(0xFFF0F0F0),
                   child: Icon(
                     icon,
                     size: 13,
                     color: done
                         ? Colors.white
                         : active
-                            ? orange
-                            : inactive,
+                        ? orange
+                        : inactive,
                   ),
                 ),
 
@@ -379,8 +471,7 @@ class TrackingScreen extends StatelessWidget {
                 fontSize: 10,
                 height: 1.4,
                 color: active ? orange : muted,
-                fontWeight:
-                    active ? FontWeight.bold : FontWeight.w500,
+                fontWeight: active ? FontWeight.bold : FontWeight.w500,
               ),
             ),
           ),

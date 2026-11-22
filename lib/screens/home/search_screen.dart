@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+
+import '../../features/menu/models/menu.dart';
+import '../../features/search/repositories/search_repository.dart';
+import '../../features/search/viewmodels/search_viewmodel.dart';
 import '../menu/menu_detail_screen.dart';
 
 class SearchScreen extends StatefulWidget {
@@ -19,144 +23,55 @@ class _SearchScreenState extends State<SearchScreen> {
       TextEditingController(text: 'Kopi');
   final FocusNode _searchFocus = FocusNode();
 
-  // Filter States
-  String _selectedCategory = 'Semua';
-  String _selectedSort = 'Paling Sesuai';
-  String _selectedPriceRange = 'Semua Harga';
+  late final SearchViewModel viewModel;
 
-  final List<String> _recentSearches = [
-    'Ayam Geprek',
-    'Milkshake',
-    'Cemilan',
-    'Matcha',
-    'NonCoffe',
-  ];
 
-  final List<Map<String, dynamic>> _menus = [
-    {
-      'name': 'Kopi Susu Wong Kito',
-      'price': 'Rp.16.000',
-      'priceVal': 16000,
-      'image': 'assets/images/kopi_susu.png',
-      'category': 'Kopi',
-    },
-    {
-      'name': 'Kopi Aren',
-      'price': 'Rp18.000',
-      'priceVal': 18000,
-      'image': 'assets/images/kopi_aren.png',
-      'category': 'Kopi',
-    },
-    {
-      'name': 'Kopi Latte',
-      'price': 'Rp20.000',
-      'priceVal': 20000,
-      'image': 'assets/images/kopi_latte.png',
-      'category': 'Kopi',
-    },
-    {
-      'name': 'Ayam Geprek',
-      'price': 'Rp18.000',
-      'priceVal': 18000,
-      'image': 'assets/images/ayam_geprek.png',
-      'category': 'Makanan',
-    },
-    {
-      'name': 'Matcha Latte',
-      'price': 'Rp20.000',
-      'priceVal': 20000,
-      'image': 'assets/images/matcha_latte.png',
-      'category': 'Non-Kopi',
-    },
-    {
-      'name': 'Milkshake Cokelat',
-      'price': 'Rp17.000',
-      'priceVal': 17000,
-      'image': 'assets/images/Onboarding1.png',
-      'category': 'Non-Kopi',
-    },
-  ];
 
   @override
   void initState() {
     super.initState();
+    viewModel = SearchViewModel(SearchRepository());
+    viewModel.addListener(_onViewModelChanged);
     // Atur kursor di akhir teks 'Kopi'
     _searchController.selection = TextSelection.collapsed(
       offset: _searchController.text.length,
     );
   }
+  void _onViewModelChanged() {
+  if (mounted) {
+    setState(() {});
+  }
+}
+
+  String rupiah(int value) {
+  final formatted = value.toString().replaceAllMapped(
+    RegExp(r'\B(?=(\d{3})+(?!\d))'),
+    (_) => '.',
+  );
+  return 'Rp$formatted';
+}
 
   @override
   void dispose() {
+    viewModel.removeListener(_onViewModelChanged);
+    viewModel.dispose();
     _searchController.dispose();
     _searchFocus.dispose();
     super.dispose();
   }
 
-  bool get _hasActiveFilter {
-    return _selectedCategory != 'Semua' ||
-        _selectedSort != 'Paling Sesuai' ||
-        _selectedPriceRange != 'Semua Harga';
-  }
+  bool get _hasActiveFilter => viewModel.hasActiveFilter;
 
-  List<Map<String, dynamic>> get _filteredMenus {
-    final query = _searchController.text.trim().toLowerCase();
+List<Menu> get _filteredMenus => viewModel.filteredMenus;
 
-    var list = _menus.where((menu) {
-      final name = menu['name']!.toString().toLowerCase();
-      final category = menu['category']!.toString().toLowerCase();
+void _search(String value) {
+  _searchController.text = value;
+  _searchController.selection = TextSelection.collapsed(
+    offset: value.length,
+  );
 
-      // Filter berdasarkan teks pencarian
-      final matchesQuery = query.isEmpty ||
-          name.contains(query) ||
-          category.contains(query);
-
-      // Filter berdasarkan kategori
-      final matchesCategory = _selectedCategory == 'Semua' ||
-          menu['category'] == _selectedCategory;
-
-      // Filter berdasarkan rentang harga
-      final price = menu['priceVal'] as int;
-      bool matchesPrice = true;
-      if (_selectedPriceRange == '< Rp18.000') {
-        matchesPrice = price < 18000;
-      } else if (_selectedPriceRange == 'Rp18.000 - Rp20.000') {
-        matchesPrice = price >= 18000 && price <= 20000;
-      } else if (_selectedPriceRange == '> Rp20.000') {
-        matchesPrice = price > 20000;
-      }
-
-      return matchesQuery && matchesCategory && matchesPrice;
-    }).toList();
-
-    // Urutkan (Sorting)
-    if (_selectedSort == 'Harga Terendah') {
-      list.sort((a, b) => (a['priceVal'] as int).compareTo(b['priceVal'] as int));
-    } else if (_selectedSort == 'Harga Tertinggi') {
-      list.sort((a, b) => (b['priceVal'] as int).compareTo(a['priceVal'] as int));
-    } else if (_selectedSort == 'Nama A-Z') {
-      list.sort((a, b) => (a['name'] as String).compareTo(b['name'] as String));
-    }
-
-    return list;
-  }
-
-  void _search(String value) {
-    setState(() {
-      _searchController.text = value;
-      _searchController.selection = TextSelection.collapsed(
-        offset: value.length,
-      );
-
-      if (value.trim().isNotEmpty &&
-          !_recentSearches.contains(value.trim())) {
-        _recentSearches.insert(0, value.trim());
-        if (_recentSearches.length > 6) {
-          _recentSearches.removeLast();
-        }
-      }
-    });
-  }
+  viewModel.search(value);
+}
 
   @override
   Widget build(BuildContext context) {
@@ -210,7 +125,7 @@ class _SearchScreenState extends State<SearchScreen> {
                             child: TextField(
                               controller: _searchController,
                               focusNode: _searchFocus,
-                              onChanged: (value) => setState(() {}),
+                              onChanged: (value) => viewModel.updateQuery(value),
                               onSubmitted: _search,
                               style: const TextStyle(
                                 fontFamily: 'Inter',
@@ -293,11 +208,7 @@ class _SearchScreenState extends State<SearchScreen> {
                       if (_hasActiveFilter)
                         GestureDetector(
                           onTap: () {
-                            setState(() {
-                              _selectedCategory = 'Semua';
-                              _selectedSort = 'Paling Sesuai';
-                              _selectedPriceRange = 'Semua Harga';
-                            });
+                            viewModel.resetFilters();
                           },
                           child: const Text(
                             'Reset Filter',
@@ -366,7 +277,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: _recentSearches.map((term) {
+                    children: viewModel.recentSearches.map((term) {
                       return InkWell(
                         borderRadius: BorderRadius.circular(18),
                         onTap: () => _search(term),
@@ -413,16 +324,16 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   // KARTU HASIL PENCARIAN (SESUAI GAMBAR)
-  Widget _buildResultCard(Map<String, dynamic> menu) {
+  Widget _buildResultCard(Menu menu) {
     return GestureDetector(
       onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (_) => MenuDetailScreen(
-              menuName: menu['name'] as String,
-              menuPrice: menu['price'] as String,
-              menuImage: menu['image'] as String,
+              menuName: menu.name,
+              menuPrice: rupiah(menu.price),
+              menuImage: menu.image,
             ),
           ),
         );
@@ -447,7 +358,7 @@ class _SearchScreenState extends State<SearchScreen> {
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: Image.asset(
-                menu['image'] as String,
+                menu.image,
                 width: 62,
                 height: 62,
                 fit: BoxFit.cover,
@@ -467,7 +378,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    menu['name'] as String,
+                    menu.name,
                     style: const TextStyle(
                       fontFamily: 'Poppins',
                       fontSize: 13,
@@ -477,7 +388,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    menu['price'] as String,
+                    rupiah(menu.price),
                     style: const TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 11,
@@ -497,9 +408,9 @@ class _SearchScreenState extends State<SearchScreen> {
 
   // MODAL FILTER PENCARIAN
   void _showFilterModal() {
-    String tempCategory = _selectedCategory;
-    String tempSort = _selectedSort;
-    String tempPrice = _selectedPriceRange;
+    String tempCategory = viewModel.selectedCategory;
+    String tempSort = viewModel.selectedSort;
+    String tempPrice = viewModel.selectedPriceRange;
 
     showModalBottomSheet(
       context: context,
@@ -715,11 +626,11 @@ class _SearchScreenState extends State<SearchScreen> {
                         flex: 2,
                         child: ElevatedButton(
                           onPressed: () {
-                            setState(() {
-                              _selectedCategory = tempCategory;
-                              _selectedSort = tempSort;
-                              _selectedPriceRange = tempPrice;
-                            });
+                            viewModel.applyFilters(
+                              category: tempCategory,
+                              sort: tempSort,
+                              priceRange: tempPrice,
+                            );
                             Navigator.pop(ctx);
                           },
                           style: ElevatedButton.styleFrom(
