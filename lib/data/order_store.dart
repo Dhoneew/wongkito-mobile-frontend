@@ -1,121 +1,78 @@
+
 import 'package:flutter/foundation.dart';
 
-class CartItem {
-  final String menuName;
-  final String menuImage;
-  final int price;
-  final String sugarLevel;
-  final bool extraShot;
-  final String temperature;
-  int quantity;
-
-  CartItem({
-    required this.menuName,
-    required this.menuImage,
-    required this.price,
-    required this.sugarLevel,
-    required this.extraShot,
-    required this.temperature,
-    required this.quantity,
-  });
-
-  int get subtotal => quantity * (price + (extraShot ? 5000 : 0));
-}
+import '../features/orders/models/cart_item.dart';
+import '../features/orders/models/order.dart';
+import '../features/orders/repositories/order_repository.dart';
+import '../features/orders/viewmodels/order_viewmodel.dart';
 
 class OrderStore extends ChangeNotifier {
-  OrderStore._();
-
-  static final OrderStore instance = OrderStore._();
-
-  final List<CartItem> cart = [];
-  final List<Map<String, dynamic>> orders = [];
-
-  String orderType = 'Dine-in';
-  String tableNumber = 'Meja 05';
-  String paymentMethod = 'QRIS';
-  String kitchenNote = '';
-
-  int get cartTotal =>
-      cart.fold(0, (total, item) => total + item.subtotal);
-
-  int get cartQuantity =>
-      cart.fold(0, (total, item) => total + item.quantity);
-
-  void setOrderType(String type) {
-    orderType = type;
-    notifyListeners();
+  OrderStore._(this.viewModel) {
+    viewModel.addListener(notifyListeners);
   }
 
-  void setTableNumber(String table) {
-    tableNumber = table;
-    notifyListeners();
-  }
+  // Satu repository untuk seluruh aplikasi.
+  static final OrderRepository _repository = OrderRepository();
 
-  void setPaymentMethod(String method) {
-    paymentMethod = method;
-    notifyListeners();
-  }
+  // Satu ViewModel yang digunakan bersama.
+  static final OrderViewModel _sharedViewModel =
+      OrderViewModel(_repository);
 
-  void setKitchenNote(String note) {
-    kitchenNote = note;
-    notifyListeners();
-  }
+  static final OrderStore instance =
+      OrderStore._(_sharedViewModel);
 
-  void refresh() {
-    notifyListeners();
-  }
+  final OrderViewModel viewModel;
 
-  void addItem(CartItem item) {
-    cart.add(item);
-    notifyListeners();
-  }
+  // Getters
+  List<CartItem> get cart => viewModel.cart;
+  List<Order> get orders => viewModel.orders;
 
-  void removeItem(CartItem item) {
-    cart.remove(item);
-    notifyListeners();
-  }
+  String get orderType => viewModel.orderType;
+  set orderType(String value) => viewModel.setOrderType(value);
 
-  void updateQuantity(CartItem item, int quantity) {
-    if (!cart.contains(item)) return;
+  String get tableNumber => viewModel.tableNumber;
+  set tableNumber(String value) => viewModel.setTableNumber(value);
 
-    if (quantity <= 0) {
-      cart.remove(item);
-    } else {
-      item.quantity = quantity;
-    }
+  String get paymentMethod => viewModel.paymentMethod;
+  set paymentMethod(String value) =>
+      viewModel.setPaymentMethod(value);
 
-    notifyListeners();
-  }
+  String get kitchenNote => viewModel.kitchenNote;
+  set kitchenNote(String value) =>
+      viewModel.setKitchenNote(value);
 
-  void checkout() {
-    if (cart.isEmpty) return;
+  int get cartTotal => viewModel.cartTotal;
+  int get cartQuantity => viewModel.cartQuantity;
 
-    final id = 'WK-${(orders.length + 1).toString().padLeft(3, '0')}';
+  // Actions
+  void setOrderType(String type) =>
+      viewModel.setOrderType(type);
 
-    orders.insert(0, {
-      'id': id,
-      'items': '$cartQuantity Item',
-      'price': cartTotal,
-      'date': DateTime.now().toString().substring(0, 16),
-      'status': 'Sedang Diproses',
-      'orderType': orderType,
-      'tableNumber': tableNumber,
-      'paymentMethod': paymentMethod,
-      'note': kitchenNote,
-      'details': cart.map((item) => {
-        'menuName': item.menuName,
-        'menuImage': item.menuImage,
-        'price': item.price,
-        'quantity': item.quantity,
-        'sugarLevel': item.sugarLevel,
-        'extraShot': item.extraShot,
-        'temperature': item.temperature,
-        'subtotal': item.subtotal,
-      }).toList(),
-    });
+  void setTableNumber(String table) =>
+      viewModel.setTableNumber(table);
 
-    cart.clear();
-    kitchenNote = '';
-    notifyListeners();
+  void setPaymentMethod(String method) =>
+      viewModel.setPaymentMethod(method);
+
+  void setKitchenNote(String note) =>
+      viewModel.setKitchenNote(note);
+
+  void refresh() => viewModel.refresh();
+
+  void addItem(CartItem item) =>
+      viewModel.addItem(item);
+
+  void removeItem(CartItem item) =>
+      viewModel.removeItem(item);
+
+  void updateQuantity(CartItem item, int quantity) =>
+      viewModel.updateQuantity(item, quantity);
+
+  void checkout() => viewModel.checkout();
+
+  @override
+  void dispose() {
+    viewModel.removeListener(notifyListeners);
+    super.dispose();
   }
 }

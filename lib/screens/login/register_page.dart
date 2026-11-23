@@ -1,3 +1,5 @@
+import '../../features/auth/repositories/auth_repository.dart';
+import '../../features/auth/viewmodels/auth_viewmodel.dart';
 import 'package:flutter/material.dart';
 import '../../main.dart';
 
@@ -21,20 +23,36 @@ class _RegisterPageState extends State<RegisterPage> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
+  late final AuthViewModel viewModel;
+
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
-  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    viewModel = AuthViewModel(AuthRepository());
+    viewModel.addListener(_onAuthChanged);
+  }
+
+  void _onAuthChanged() {
+    if (mounted) setState(() {});
+  }
 
   @override
   void dispose() {
+    viewModel.removeListener(_onAuthChanged);
+    viewModel.dispose();
+
     _usernameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+
     super.dispose();
   }
 
-  void _signUp() async {
+  Future<void> _signUp() async {
     if (!_formKey.currentState!.validate()) return;
 
     if (_passwordController.text != _confirmPasswordController.text) {
@@ -47,15 +65,33 @@ class _RegisterPageState extends State<RegisterPage> {
       return;
     }
 
-    setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 1000));
+    FocusScope.of(context).unfocus();
+
+    final success = await viewModel.register(
+      username: _usernameController.text,
+      email: _emailController.text,
+      password: _passwordController.text,
+    );
+
     if (!mounted) return;
-    setState(() => _isLoading = false);
+
+    if (!success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(viewModel.errorMessage ?? 'Registrasi gagal.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Akun berhasil dibuat! Selamat datang di Warkop Wong Kito.'),
-        backgroundColor: Color(0xFF2E7D32),
+      SnackBar(
+        content: Text(
+          viewModel.successMessage ??
+              'Akun berhasil dibuat! Selamat datang di Warkop Wong Kito.',
+        ),
+        backgroundColor: const Color(0xFF2E7D32),
       ),
     );
 
@@ -188,7 +224,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     width: double.infinity,
                     height: 46,
                     child: ElevatedButton(
-                      onPressed: _isLoading ? null : _signUp,
+                      onPressed: viewModel.isLoading ? null : _signUp,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFF5A623),
                         foregroundColor: Colors.white,
@@ -197,7 +233,7 @@ class _RegisterPageState extends State<RegisterPage> {
                           borderRadius: BorderRadius.circular(6),
                         ),
                       ),
-                      child: _isLoading
+                      child: viewModel.isLoading
                           ? const SizedBox(
                               width: 22,
                               height: 22,

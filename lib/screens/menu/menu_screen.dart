@@ -1,6 +1,9 @@
+import '../../features/menu/models/menu.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
+import '../../features/menu/repositories/menu_repository.dart';
+import '../../features/menu/viewmodels/menu_viewmodel.dart';
 import 'menu_detail_screen.dart';
 
 class MenuScreen extends StatefulWidget {
@@ -11,47 +14,32 @@ class MenuScreen extends StatefulWidget {
 }
 
 class _MenuScreenState extends State<MenuScreen> {
+  late final MenuViewModel viewModel;
+
   static const Color backgroundColor = Color(0xFFFAF9F9);
   static const Color textColor = Color(0xFF1A1C1C);
   static const Color orange = Color(0xFFF57C00);
 
-  int selectedCategory = 0;
-  bool isError = true; // Shows empty/error state initially as requested
-  bool isLoading = false;
 
-  final List<String> categories = [
-    'Semua (24)',
-    'Kopi',
-    'Non-Kopi',
-    'Makanan',
-  ];
+  @override
+  void initState() {
+    super.initState();
+    viewModel = MenuViewModel(MenuRepository());
+    viewModel.addListener(_onViewModelChanged);
+  }
 
-  final List<Map<String, dynamic>> products = [
-    {
-      'name': 'Kopi Susu',
-      'description': 'Kopi espresso robusta + susu kental manis & gula aren',
-      'price': 18000,
-      'note': 'Estimasi saji: ~5 mnt',
-      'category': 'Kopi',
-      'image': 'assets/images/kopi_susu.png',
-    },
-    {
-      'name': 'Matcha Latte',
-      'description': 'Pure green tea matcha dengan fresh milk lembut',
-      'price': 20000,
-      'note': 'Bisa dingin / panas',
-      'category': 'Non-Kopi',
-      'image': 'assets/images/matcha_latte.png',
-    },
-    {
-      'name': 'Pisang Goreng Keju',
-      'description': 'Pisang kepok goreng renyah dengan taburan keju',
-      'price': 15000,
-      'note': 'Camilan hangat',
-      'category': 'Makanan',
-      'image': 'assets/images/ayam_geprek.png',
-    },
-  ];
+  void _onViewModelChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  @override
+  void dispose() {
+    viewModel.removeListener(_onViewModelChanged);
+    viewModel.dispose();
+    super.dispose();
+  }
 
   String formatRupiah(int price) {
     return 'Rp${price.toString().replaceAllMapped(
@@ -60,27 +48,19 @@ class _MenuScreenState extends State<MenuScreen> {
         )}';
   }
 
-  void _handleRetry() async {
-    setState(() {
-      isLoading = true;
-    });
+  Future<void> _handleRetry() async {
+  await viewModel.retryMenu();
 
-    await Future.delayed(const Duration(milliseconds: 1200));
+  if (!mounted) return;
 
-    if (!mounted) return;
-    setState(() {
-      isLoading = false;
-      isError = false;
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Menu berhasil dimuat!'),
-        backgroundColor: Color(0xFF2E7D32),
-        duration: Duration(seconds: 2),
-      ),
-    );
-  }
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text('Menu berhasil dimuat!'),
+      backgroundColor: Color(0xFF2E7D32),
+      duration: Duration(seconds: 2),
+    ),
+  );
+}
 
   void _checkConnection() {
     showModalBottomSheet(
@@ -184,10 +164,7 @@ class _MenuScreenState extends State<MenuScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final filteredProducts = products.where((product) {
-      if (selectedCategory == 0) return true;
-      return product['category'] == categories[selectedCategory];
-    }).toList();
+    final filteredProducts = viewModel.filteredMenus;
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -196,7 +173,7 @@ class _MenuScreenState extends State<MenuScreen> {
           children: [
             _buildHeader(),
             Expanded(
-              child: isError
+              child: viewModel.isError
                   ? _buildEmptyErrorState()
                   : _buildLoadedMenu(filteredProducts),
             ),
@@ -237,16 +214,14 @@ class _MenuScreenState extends State<MenuScreen> {
           ),
           // Subtle toggle button to switch between empty state and loaded state for testing
           IconButton(
-            tooltip: isError ? 'Tampilkan Menu' : 'Simulasi Menu Kosong',
+            tooltip: viewModel.isError ? 'Tampilkan Menu' : 'Simulasi Menu Kosong',
             icon: Icon(
-              isError ? Icons.refresh : Icons.cloud_off_outlined,
+              viewModel.isError ? Icons.refresh : Icons.cloud_off_outlined,
               size: 20,
-              color: isError ? orange : const Color(0xFF888888),
+              color: viewModel.isError ? orange : const Color(0xFF888888),
             ),
             onPressed: () {
-              setState(() {
-                isError = !isError;
-              });
+              viewModel.toggleMenuState();
             },
           ),
         ],
@@ -302,8 +277,8 @@ class _MenuScreenState extends State<MenuScreen> {
             SizedBox(
               height: 40,
               child: ElevatedButton.icon(
-                onPressed: isLoading ? null : _handleRetry,
-                icon: isLoading
+                onPressed: viewModel.isLoading ? null : _handleRetry,
+                icon: viewModel.isLoading
                     ? const SizedBox(
                         width: 16,
                         height: 16,
@@ -318,7 +293,7 @@ class _MenuScreenState extends State<MenuScreen> {
                         color: Colors.white,
                       ),
                 label: Text(
-                  isLoading ? 'Memuat...' : 'Coba Lagi',
+                  viewModel.isLoading ? 'Memuat...' : 'Coba Lagi',
                   style: const TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 13,
@@ -413,8 +388,8 @@ class _MenuScreenState extends State<MenuScreen> {
     );
   }
 
-  /// Loaded menu content with categories and product cards
-  Widget _buildLoadedMenu(List<Map<String, dynamic>> filteredProducts) {
+  /// Loaded menu content with viewModel.categories and product cards
+  Widget _buildLoadedMenu(List<Menu> filteredProducts) {
     return Column(
       children: [
         // Category Chips (No searchbar!)
@@ -423,16 +398,14 @@ class _MenuScreenState extends State<MenuScreen> {
           margin: const EdgeInsets.fromLTRB(16, 4, 16, 12),
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
-            itemCount: categories.length,
+            itemCount: viewModel.categories.length,
             separatorBuilder: (_, _) => const SizedBox(width: 8),
             itemBuilder: (context, index) {
-              final selected = selectedCategory == index;
+              final selected = viewModel.selectedCategory == index;
 
               return GestureDetector(
                 onTap: () {
-                  setState(() {
-                    selectedCategory = index;
-                  });
+                  viewModel.selectCategory(index);
                 },
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -442,7 +415,7 @@ class _MenuScreenState extends State<MenuScreen> {
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    categories[index],
+                    viewModel.categories[index],
                     style: TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 11,
@@ -481,16 +454,16 @@ class _MenuScreenState extends State<MenuScreen> {
     );
   }
 
-  Widget _buildProductCard(Map<String, dynamic> product) {
+  Widget _buildProductCard(Menu product) {
     return GestureDetector(
       onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => MenuDetailScreen(
-              menuName: product['name'] as String,
-              menuPrice: formatRupiah(product['price'] as int),
-              menuImage: product['image'] as String,
+              menuName: product.name,
+              menuPrice: formatRupiah(product.price),
+              menuImage: product.image,
             ),
           ),
         );
@@ -520,7 +493,7 @@ class _MenuScreenState extends State<MenuScreen> {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
                   child: Image.asset(
-                    product['image'] as String,
+                    product.image,
                     width: 78,
                     height: 78,
                     fit: BoxFit.cover,
@@ -546,7 +519,7 @@ class _MenuScreenState extends State<MenuScreen> {
                         children: [
                           Expanded(
                             child: Text(
-                              product['name'] as String,
+                              product.name,
                               style: const TextStyle(
                                 fontFamily: 'Poppins',
                                 fontSize: 13,
@@ -578,7 +551,7 @@ class _MenuScreenState extends State<MenuScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        product['description'] as String,
+                        product.description,
                         style: const TextStyle(
                           fontFamily: 'Inter',
                           fontSize: 10,
@@ -588,7 +561,7 @@ class _MenuScreenState extends State<MenuScreen> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        formatRupiah(product['price'] as int),
+                        formatRupiah(product.price),
                         style: const TextStyle(
                           fontFamily: 'Poppins',
                           fontSize: 14,
@@ -606,7 +579,7 @@ class _MenuScreenState extends State<MenuScreen> {
               children: [
                 Expanded(
                   child: Text(
-                    product['note'] as String,
+                    product.note,
                     style: const TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 10,
@@ -621,7 +594,7 @@ class _MenuScreenState extends State<MenuScreen> {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(
-                            '${product['name']} ditambahkan ke pesanan',
+                            '${product.name} ditambahkan ke pesanan',
                           ),
                           duration: const Duration(seconds: 2),
                         ),

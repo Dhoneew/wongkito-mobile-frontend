@@ -1,3 +1,5 @@
+import '../../features/auth/repositories/auth_repository.dart';
+import '../../features/auth/viewmodels/auth_viewmodel.dart';
 import 'package:flutter/material.dart';
 import '../../main.dart';
 import 'forgot_password_page.dart';
@@ -10,6 +12,7 @@ class LoginPage extends StatefulWidget {
   State<LoginPage> createState() => _LoginPageState();
 }
 
+
 class _LoginPageState extends State<LoginPage> {
   static const Color _orange = Color(0xFFF57C00);
   static const Color _bg = Color(0xFFFAF9F9);
@@ -21,34 +24,65 @@ class _LoginPageState extends State<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
+  late final AuthViewModel viewModel;
+
   bool _obscurePassword = true;
-  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    viewModel = AuthViewModel(AuthRepository());
+    viewModel.addListener(_onAuthChanged);
+  }
+
+  void _onAuthChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
 
   @override
   void dispose() {
+    viewModel.removeListener(_onAuthChanged);
+    viewModel.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
-  // LOGIN SIMULASI
+  // LOGIN MELALUI VIEWMODEL
+
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
 
     FocusScope.of(context).unfocus();
 
-    setState(() => _isLoading = true);
-
-    await Future.delayed(const Duration(seconds: 1));
+    final success = await viewModel.login(
+      email: _emailController.text,
+      password: _passwordController.text,
+    );
 
     if (!mounted) return;
 
-    setState(() => _isLoading = false);
+    if (!success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            viewModel.errorMessage ?? 'Login gagal.',
+          ),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Login simulasi berhasil!'),
-        backgroundColor: Color(0xFF388E3C),
+      SnackBar(
+        content: Text(
+          viewModel.successMessage ?? 'Login berhasil!',
+        ),
+        backgroundColor: const Color(0xFF388E3C),
       ),
     );
 
@@ -63,6 +97,7 @@ class _LoginPageState extends State<LoginPage> {
       ),
     );
   }
+
 
   InputDecoration _inputDecoration({
     required String hint,
@@ -282,7 +317,7 @@ class _LoginPageState extends State<LoginPage> {
                   SizedBox(
                     height: 44,
                     child: ElevatedButton(
-                      onPressed: _isLoading ? null : _login,
+                      onPressed: viewModel.isLoading ? null : _login,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _orange,
                         foregroundColor: _bg,
@@ -294,7 +329,7 @@ class _LoginPageState extends State<LoginPage> {
                           borderRadius: BorderRadius.circular(7),
                         ),
                       ),
-                      child: _isLoading
+                      child: viewModel.isLoading
                           ? const SizedBox(
                               width: 20,
                               height: 20,

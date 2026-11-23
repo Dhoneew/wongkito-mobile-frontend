@@ -30,7 +30,7 @@ class PromoDetailScreen extends StatelessWidget {
                           Image.asset(
                             'assets/images/Onboarding3.png',
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) {
+                            errorBuilder: (context, error, stackTrace) {
                               return Container(
                                 color: const Color(0xFFFFE0C2),
                                 child: const Icon(
@@ -47,9 +47,9 @@ class PromoDetailScreen extends StatelessWidget {
                                 begin: Alignment.topCenter,
                                 end: Alignment.bottomCenter,
                                 colors: [
-                                  Colors.black.withOpacity(0.45),
+                                  Colors.black.withValues(alpha: 0.45),
                                   Colors.transparent,
-                                  Colors.black.withOpacity(0.15),
+                                  Colors.black.withValues(alpha: 0.15),
                                 ],
                               ),
                             ),
@@ -273,7 +273,7 @@ class PromoDetailScreen extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE3E3E3)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -288,7 +288,7 @@ class PromoDetailScreen extends StatelessWidget {
               width: 54,
               height: 54,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) {
+              errorBuilder: (context, error, stackTrace) {
                 return Container(
                   width: 54,
                   height: 54,

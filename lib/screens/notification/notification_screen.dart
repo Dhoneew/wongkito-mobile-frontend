@@ -1,11 +1,33 @@
+import '../../features/notification/repositories/notification_repository.dart';
+import '../../features/notification/viewmodels/notification_viewmodel.dart';
 import 'package:flutter/material.dart';
 
-class NotificationScreen extends StatelessWidget {
+class NotificationScreen extends StatefulWidget {
   const NotificationScreen({super.key});
 
-  static const Color orange = Color(0xFFF57C00);
+  @override
+  State<NotificationScreen> createState() => _NotificationScreenState();
+}
+
+class _NotificationScreenState extends State<NotificationScreen> {
   static const Color backgroundColor = Color(0xFFFAF9F9);
   static const Color textColor = Color(0xFF1A1C1C);
+
+  late final NotificationViewModel viewModel;
+
+  @override
+  void initState() {
+    super.initState();
+    viewModel = NotificationViewModel(NotificationRepository());
+    viewModel.loadNotifications();
+  }
+
+  @override
+  void dispose() {
+    viewModel.dispose();
+    super.dispose();
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -29,31 +51,20 @@ class NotificationScreen extends StatelessWidget {
         ),
         centerTitle: false,
       ),
+
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         children: [
-          _buildNotificationItem(
-            icon: Icons.takeout_dining,
-            iconBgColor: const Color(0xFFFFE8C5),
-            iconColor: orange,
-            title: 'Pesanan siap diambil',
-            subtitle: 'Pesanan sudah selesai dibuat',
-          ),
-          _buildNotificationItem(
-            icon: Icons.takeout_dining,
-            iconBgColor: const Color(0xFFFFE8C5),
-            iconColor: orange,
-            title: 'Pesanan sedang dibuat',
-            subtitle: 'Barista sedang menyiapkan pesanan',
-          ),
-          _buildNotificationItem(
-            icon: Icons.local_offer,
-            iconBgColor: const Color(0xFFFFD6D6),
-            iconColor: orange,
-            title: 'Promo paket kenyang hemat',
-            subtitle: 'Dapatkan diskon spesial hari ini',
-            isPromo: true,
-          ),
+          ...viewModel.notifications.map((notification) {
+            return _buildNotificationItem(
+              icon: notification.icon,
+              iconBgColor: notification.iconBgColor,
+              iconColor: notification.iconColor,
+              title: notification.title,
+              subtitle: notification.subtitle,
+              isPromo: notification.isPromo,
+              );
+          }),
         ],
       ),
     );

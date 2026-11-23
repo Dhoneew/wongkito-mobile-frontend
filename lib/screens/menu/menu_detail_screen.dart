@@ -1,6 +1,9 @@
+import '../../features/menu/viewmodels/menu_detail_viewmodel.dart';
 import 'package:flutter/material.dart';
 
 import '../../data/order_store.dart';
+import '../../features/orders/models/cart_item.dart';
+import '../../features/orders/viewmodels/order_viewmodel.dart';
 import '../orders/checkout_screen.dart';
 
 class MenuDetailScreen extends StatefulWidget {
@@ -20,6 +23,9 @@ class MenuDetailScreen extends StatefulWidget {
 }
 
 class _MenuDetailScreenState extends State<MenuDetailScreen> {
+  late final OrderViewModel orderViewModel;
+  late final MenuDetailViewModel viewModel;
+
   static const Color orange = Color(0xFFF57C00);
   static const Color primaryOrange = Color(0xFFF57C00);
   static const Color goldenOrange = Color(0xFFFFB74D);
@@ -28,22 +34,33 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
   static const Color secondaryText = Color(0xFF666666);
   static const Color lightText = Color(0xFF888888);
 
-  String? sugarLevel;
-  bool? extraShot;
-  String? temperature;
-  String orderType = 'Dine-in (Makan di Tempat)';
-  String tableNumber = 'Meja 05';
 
-  int quantity = 0;
+  @override
+  void initState() {
+    super.initState();
 
-  int get basePrice {
+    orderViewModel = OrderStore.instance.viewModel;
+
     final digits = widget.menuPrice.replaceAll(RegExp(r'[^0-9]'), '');
-    return int.tryParse(digits) ?? 18000;
+    final price = int.tryParse(digits) ?? 18000;
+
+    viewModel = MenuDetailViewModel(basePrice: price);
+    viewModel.addListener(_onViewModelChanged);
   }
 
-  int get unitPrice => basePrice + (extraShot == true ? 5000 : 0);
+  void _onViewModelChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
 
-  int get subtotal => quantity * unitPrice;
+  @override
+  void dispose() {
+    viewModel.removeListener(_onViewModelChanged);
+    viewModel.dispose();
+    super.dispose();
+  }
+
 
   String rupiah(int value) {
     final formatted = value.toString().replaceAllMapped(
@@ -178,31 +195,25 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
                 _buildOptionItem(
                   title: 'Normal (100%)',
                   trailingText: 'Rekomendasi',
-                  isSelected: sugarLevel == 'Normal (100%)',
+                  isSelected: viewModel.sugarLevel == 'Normal (100%)',
                   onTap: () {
-                    setState(() {
-                      sugarLevel = 'Normal (100%)';
-                    });
+                    viewModel.selectSugarLevel('Normal (100%)');
                   },
                 ),
                 const SizedBox(height: 8),
                 _buildOptionItem(
                   title: 'Less Sugar (50%)',
-                  isSelected: sugarLevel == 'Less Sugar (50%)',
+                  isSelected: viewModel.sugarLevel == 'Less Sugar (50%)',
                   onTap: () {
-                    setState(() {
-                      sugarLevel = 'Less Sugar (50%)';
-                    });
+                    viewModel.selectSugarLevel('Less Sugar (50%)');
                   },
                 ),
                 const SizedBox(height: 8),
                 _buildOptionItem(
                   title: 'No Sugar (0%)',
-                  isSelected: sugarLevel == 'No Sugar (0%)',
+                  isSelected: viewModel.sugarLevel == 'No Sugar (0%)',
                   onTap: () {
-                    setState(() {
-                      sugarLevel = 'No Sugar (0%)';
-                    });
+                    viewModel.selectSugarLevel('No Sugar (0%)');
                   },
                 ),
               ],
@@ -218,11 +229,9 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
                 _buildOptionItem(
                   title: 'Tidak',
                   trailingText: 'Rp0',
-                  isSelected: extraShot == false,
+                  isSelected: viewModel.extraShot == false,
                   onTap: () {
-                    setState(() {
-                      extraShot = false;
-                    });
+                    viewModel.selectExtraShot(false);
                   },
                 ),
                 const SizedBox(height: 8),
@@ -230,11 +239,9 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
                   title: 'Extra Shot (+Rp5.000)',
                   trailingText: '+Rp5.000',
                   trailingBold: true,
-                  isSelected: extraShot == true,
+                  isSelected: viewModel.extraShot == true,
                   onTap: () {
-                    setState(() {
-                      extraShot = true;
-                    });
+                    viewModel.selectExtraShot(true);
                   },
                 ),
               ],
@@ -253,11 +260,9 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
                       child: _buildOptionItem(
                         title: 'Ice (Dingin)',
                         trailingIcon: Icons.ac_unit,
-                        isSelected: temperature == 'Ice (Dingin)',
+                        isSelected: viewModel.temperature == 'Ice (Dingin)',
                         onTap: () {
-                          setState(() {
-                            temperature = 'Ice (Dingin)';
-                          });
+                          viewModel.selectTemperature('Ice (Dingin)');
                         },
                       ),
                     ),
@@ -266,11 +271,9 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
                       child: _buildOptionItem(
                         title: 'Hot (Panas)',
                         trailingIcon: Icons.local_fire_department,
-                        isSelected: temperature == 'Hot (Panas)',
+                        isSelected: viewModel.temperature == 'Hot (Panas)',
                         onTap: () {
-                          setState(() {
-                            temperature = 'Hot (Panas)';
-                          });
+                          viewModel.selectTemperature('Hot (Panas)');
                         },
                       ),
                     ),
@@ -302,14 +305,12 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
               children: [
                 _buildOptionItem(
                   title: 'Dine-in (Makan di Tempat)',
-                  isSelected: orderType == 'Dine-in (Makan di Tempat)',
+                  isSelected: viewModel.orderType == 'Dine-in (Makan di Tempat)',
                   onTap: () {
-                    setState(() {
-                      orderType = 'Dine-in (Makan di Tempat)';
-                    });
+                    viewModel.selectOrderType('Dine-in (Makan di Tempat)');
                   },
                 ),
-                if (orderType == 'Dine-in (Makan di Tempat)') ...[
+                if (viewModel.orderType == 'Dine-in (Makan di Tempat)') ...[
                   const SizedBox(height: 8),
                   Container(
                     width: double.infinity,
@@ -349,7 +350,7 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
-                                  'Pilih Meja: $tableNumber',
+                                  'Pilih Meja: ${viewModel.tableNumber}',
                                   style: const TextStyle(
                                     fontFamily: 'Inter',
                                     fontSize: 12,
@@ -373,11 +374,9 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
                 const SizedBox(height: 8),
                 _buildOptionItem(
                   title: 'Take Away (Bungkus)',
-                  isSelected: orderType == 'Take Away (Bungkus)',
+                  isSelected: viewModel.orderType == 'Take Away (Bungkus)',
                   onTap: () {
-                    setState(() {
-                      orderType = 'Take Away (Bungkus)';
-                    });
+                    viewModel.selectOrderType('Take Away (Bungkus)');
                   },
                 ),
               ],
@@ -434,9 +433,7 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
                       children: [
                         InkWell(
                           onTap: () {
-                            if (quantity > 0) {
-                              setState(() => quantity--);
-                            }
+                            viewModel.decreaseQuantity();
                           },
                           borderRadius: BorderRadius.circular(4),
                           child: Container(
@@ -457,7 +454,7 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
                           width: 44,
                           alignment: Alignment.center,
                           child: Text(
-                            '$quantity',
+                            '${viewModel.quantity}',
                             style: const TextStyle(
                               fontFamily: 'Poppins',
                               fontSize: 16,
@@ -468,7 +465,7 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
                         ),
                         InkWell(
                           onTap: () {
-                            setState(() => quantity++);
+                            viewModel.increaseQuantity();
                           },
                           borderRadius: BorderRadius.circular(4),
                           child: Container(
@@ -506,9 +503,9 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    quantity == 0
+                    viewModel.quantity == 0
                         ? 'Subtotal (0 items with extra shot)'
-                        : 'Subtotal ($quantity item${quantity == 1 ? '' : 's'}${extraShot == true ? ' with extra shot' : ''})',
+                        : 'Subtotal (${viewModel.quantity} item${viewModel.quantity == 1 ? '' : 's'}${viewModel.extraShot == true ? ' with extra shot' : ''})',
                     style: const TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 11,
@@ -516,7 +513,7 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
                     ),
                   ),
                   Text(
-                    quantity == 0 ? 'Rp0.000' : rupiah(subtotal),
+                    viewModel.quantity == 0 ? 'Rp0.000' : rupiah(viewModel.subtotal),
                     style: const TextStyle(
                       fontFamily: 'Poppins',
                       fontSize: 14,
@@ -566,7 +563,7 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
   // DIALOG PILIH MEJA (SESUAI GAMBAR)
   void _showTableSelectionDialog() {
     // Ambil nomor meja saat ini (misal "05" dari "Meja 05")
-    String selectedTableDigits = tableNumber.replaceAll(RegExp(r'[^0-9]'), '');
+    String selectedTableDigits = viewModel.tableNumber.replaceAll(RegExp(r'[^0-9]'), '');
     if (selectedTableDigits.isEmpty) selectedTableDigits = '05';
 
     // Meja tidak tersedia sesuai tampilan gambar (06, 08, 10)
@@ -735,9 +732,7 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
                           height: 38,
                           child: ElevatedButton(
                             onPressed: () {
-                              setState(() {
-                                tableNumber = 'Meja $selectedTableDigits';
-                              });
+                              viewModel.selectTableNumber('Meja $selectedTableDigits');
                               Navigator.pop(dialogContext);
                             },
                             style: ElevatedButton.styleFrom(
@@ -923,28 +918,30 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
 
   // TAMBAH MENU KE KERANJANG
   void _addToCart() {
-    if (quantity <= 0) {
+    final validationMessage = viewModel.validateOrder();
+
+    if (validationMessage != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Silakan tambahkan jumlah pesanan minimal 1'),
+        SnackBar(
+          content: Text(validationMessage),
           backgroundColor: Colors.redAccent,
         ),
       );
       return;
     }
 
-    OrderStore.instance.orderType = orderType;
-    OrderStore.instance.tableNumber = tableNumber;
+    orderViewModel.setOrderType(viewModel.orderType);
+    orderViewModel.setTableNumber(viewModel.tableNumber);
 
-    OrderStore.instance.addItem(
+    orderViewModel.addItem(
       CartItem(
         menuName: widget.menuName,
         menuImage: widget.menuImage,
-        price: basePrice,
-        sugarLevel: sugarLevel ?? 'Normal (100%)',
-        extraShot: extraShot == true,
-        temperature: temperature ?? 'Ice (Dingin)',
-        quantity: quantity,
+        price: viewModel.basePrice,
+        sugarLevel: viewModel.sugarLevel!,
+        extraShot: viewModel.extraShot == true,
+        temperature: viewModel.temperature!,
+        quantity: viewModel.quantity,
       ),
     );
 

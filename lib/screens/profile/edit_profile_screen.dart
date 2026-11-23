@@ -1,3 +1,5 @@
+import '../../features/profile/repositories/profile_repository.dart';
+import '../../features/profile/viewmodels/profile_viewmodel.dart';
 import 'package:flutter/material.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -13,6 +15,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   static const Color textColor = Color(0xFF1A1C1C);
 
   final _formKey = GlobalKey<FormState>();
+  late final ProfileViewModel viewModel;
   final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -21,12 +24,25 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
 
+
+  @override
+  void initState() {
+    super.initState();
+
+    viewModel = ProfileViewModel(ProfileRepository.instance);
+    viewModel.loadProfile();
+
+    _usernameController.text = viewModel.profile?.username ?? '';
+    _emailController.text = viewModel.profile?.email ?? '';
+  }
+
   @override
   void dispose() {
     _usernameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    viewModel.dispose();
     super.dispose();
   }
 
@@ -246,8 +262,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   void _saveProfile() {
-    if (_passwordController.text.isNotEmpty &&
-        _passwordController.text != _confirmPasswordController.text) {
+    final success = viewModel.updateProfile(
+      username: _usernameController.text.trim(),
+      email: _emailController.text.trim(),
+      password: _passwordController.text,
+      confirmPassword: _confirmPasswordController.text,
+    );
+
+    if (!success) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Password dan konfirmasi password tidak cocok'),
@@ -257,13 +279,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       return;
     }
 
-    // TODO: Implement save logic (API call)
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Profil berhasil diperbarui'),
         backgroundColor: Colors.green,
       ),
     );
+
     Navigator.pop(context);
   }
 }

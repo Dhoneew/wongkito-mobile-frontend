@@ -1,8 +1,10 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../data/order_store.dart';
+import '../../features/orders/viewmodels/order_viewmodel.dart';
 import '../tracking/tracking_screen.dart';
 
 class PaymentCodeScreen extends StatefulWidget {
@@ -20,6 +22,8 @@ class PaymentCodeScreen extends StatefulWidget {
 }
 
 class _PaymentCodeScreenState extends State<PaymentCodeScreen> {
+  final OrderViewModel viewModel = OrderStore.instance.viewModel;
+
   static const Color orange = Color(0xFFF57C00);
   static const Color dark = Color(0xFF1A1C1C);
   static const Color bg = Color(0xFFFAF9F9);
@@ -68,8 +72,8 @@ class _PaymentCodeScreenState extends State<PaymentCodeScreen> {
   Widget build(BuildContext context) {
     final amountToPay = widget.totalAmount > 0
         ? widget.totalAmount
-        : (OrderStore.instance.cartTotal > 0
-            ? OrderStore.instance.cartTotal
+        : (viewModel.cartTotal > 0
+            ? viewModel.cartTotal
             : 36000);
 
     return Scaffold(
@@ -592,17 +596,15 @@ class _PaymentCodeScreenState extends State<PaymentCodeScreen> {
   }
 
   Future<void> _confirmPaymentSuccess() async {
-    setState(() => _isProcessing = true);
+  if (_isProcessing) return;
 
-    // Simulasi verifikasi sistem pembayaran 1.2 detik
-    await Future.delayed(const Duration(milliseconds: 1200));
+  setState(() => _isProcessing = true);
 
-    if (!mounted) return;
+  await Future.delayed(const Duration(milliseconds: 1200));
 
-    // Lakukan checkout di store jika ada item di keranjang
-    OrderStore.instance.checkout();
+  if (!mounted) return;
 
-    setState(() => _isProcessing = false);
+  viewModel.checkout();
 
     // Dialog Sukses
     await showDialog(
