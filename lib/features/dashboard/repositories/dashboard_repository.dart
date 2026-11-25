@@ -1,26 +1,13 @@
 import '../../menu/models/menu.dart';
+import '../../menu/repositories/menu_repository.dart';
 
 class DashboardRepository {
-  final List<Menu> _recommendedMenus = [
-    const Menu(
-      name: 'Kopi Susu',
-      description: 'Kopi susu khas Wong Kito',
-      price: 18000,
-      note: '',
-      category: 'Kopi',
-      image: 'assets/images/kopi_susu.png',
-    ),
-    const Menu(
-      name: 'Matcha Latte',
-      description: 'Matcha latte',
-      price: 20000,
-      note: '',
-      category: 'Non-Kopi',
-      image: 'assets/images/matcha_latte.png',
-    ),
-  ];
+  /// Dashboard memakai sumber katalog yang sama dengan halaman Menu supaya
+  /// nama, harga, deskripsi, dan kategori tidak berbeda antar   halaman.
+  final MenuRepository _menuRepository = MenuRepository();
 
   List<Menu> getRecommendedMenus() {
-    return List.unmodifiable(_recommendedMenus);
+    // Tiga kartu pertama cukup untuk baris rekomendasi di dashboard.
+    return _menuRepository.getMenus().take(3).toList();
   }
 }

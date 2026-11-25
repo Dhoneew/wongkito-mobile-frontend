@@ -8,17 +8,42 @@ class SearchViewModel extends ChangeNotifier {
 
   SearchViewModel(this.repository);
 
+  /// Label filter dipusatkan di sini agar chip di UI dan logika di ViewModel
+  /// tidak bisa berbeda (misalnya chip "Harga Termurah" tapi kode masih
+  /// mengecek "Harga Terendah").
+  static const String defaultCategory = 'Semua';
+  static const String defaultSort = 'Relevan';
+  static const String defaultPriceRange = 'Semua Harga';
+
+  static const List<String> categories = [
+    defaultCategory,
+    'Kopi',
+    'Non-Kopi',
+    'Makanan',
+  ];
+  static const List<String> sortOptions = [
+    defaultSort,
+    'Harga Termurah',
+    'Harga Termahal',
+  ];
+  static const List<String> priceRanges = [
+    defaultPriceRange,
+    '< Rp18.000',
+    'Rp18.000 - Rp20.000',
+    '> Rp20.000',
+  ];
+
   String _query = 'Kopi';
-  String _selectedCategory = 'Semua';
-  String _selectedSort = 'Paling Sesuai';
-  String _selectedPriceRange = 'Semua Harga';
+  String _selectedCategory = defaultCategory;
+  String _selectedSort = defaultSort;
+  String _selectedPriceRange = defaultPriceRange;
 
   final List<String> _recentSearches = [
-    'Ayam Geprek',
-    'Milkshake',
-    'Cemilan',
-    'Matcha',
-    'NonCoffe',
+    'Kopi Susu',
+    'Matcha Latte',
+    'Pisang Goreng Keju',
+    'Kopi',
+    'Non-Kopi',
   ];
 
   String get query => _query;
@@ -28,11 +53,15 @@ class SearchViewModel extends ChangeNotifier {
 
   List<String> get recentSearches => List.unmodifiable(_recentSearches);
 
-  bool get hasActiveFilter {
-    return _selectedCategory != 'Semua' ||
-        _selectedSort != 'Paling Sesuai' ||
-        _selectedPriceRange != 'Semua Harga';
+  int get activeFilterCount {
+    var count = 0;
+    if (_selectedCategory != defaultCategory) count++;
+    if (_selectedSort != defaultSort) count++;
+    if (_selectedPriceRange != defaultPriceRange) count++;
+    return count;
   }
+
+  bool get hasActiveFilter => activeFilterCount > 0;
 
   List<Menu> get filteredMenus {
     final query = _query.trim().toLowerCase();
@@ -59,12 +88,10 @@ class SearchViewModel extends ChangeNotifier {
       return matchesQuery && matchesCategory && matchesPrice;
     }).toList();
 
-    if (_selectedSort == 'Harga Terendah') {
+    if (_selectedSort == 'Harga Termurah') {
       menus.sort((a, b) => a.price.compareTo(b.price));
-    } else if (_selectedSort == 'Harga Tertinggi') {
+    } else if (_selectedSort == 'Harga Termahal') {
       menus.sort((a, b) => b.price.compareTo(a.price));
-    } else if (_selectedSort == 'Nama A-Z') {
-      menus.sort((a, b) => a.name.compareTo(b.name));
     }
 
     return menus;
@@ -124,10 +151,12 @@ class SearchViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Reset hanya menyentuh filter; query yang sedang diketik sengaja tidak
+  /// diubah agar hasil pencarian tetap kontekstual.
   void resetFilters() {
-    _selectedCategory = 'Semua';
-    _selectedSort = 'Paling Sesuai';
-    _selectedPriceRange = 'Semua Harga';
+    _selectedCategory = defaultCategory;
+    _selectedSort = defaultSort;
+    _selectedPriceRange = defaultPriceRange;
     notifyListeners();
   }
 }

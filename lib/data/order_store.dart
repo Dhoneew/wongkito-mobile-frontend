@@ -68,7 +68,14 @@ class OrderStore extends ChangeNotifier {
   void updateQuantity(CartItem item, int quantity) =>
       viewModel.updateQuantity(item, quantity);
 
-  void checkout() => viewModel.checkout();
+  void updateItemNote(CartItem item, String note) =>
+      viewModel.updateItemNote(item, note);
+
+  String? checkout() => viewModel.checkout();
+
+  bool cancelOrder(String orderId) => viewModel.cancelOrder(orderId);
+
+  bool markOrderPaid(String orderId) => viewModel.markOrderPaid(orderId);
 
   @override
   void dispose() {

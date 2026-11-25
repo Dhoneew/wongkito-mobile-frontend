@@ -1,5 +1,6 @@
-
 import 'package:flutter/material.dart';
+
+import '../theme/wkm_style.dart';
 
 class WkmBottomNav extends StatelessWidget {
   final int selectedIndex;
@@ -11,12 +12,9 @@ class WkmBottomNav extends StatelessWidget {
     required this.onTap,
   });
 
-  static const orange = Color(0xFFFF6200);
-  static const bgColor = Color(0xFFFAF9F9);
-
   @override
   Widget build(BuildContext context) {
-    const labels = ['Home', 'Menu', 'Pesanan', 'Profil'];
+    const labels = ['Beranda', 'Menu', 'Pesanan', 'Profil'];
     const icons = [
       Icons.home_filled,
       Icons.restaurant_menu,
@@ -29,7 +27,7 @@ class WkmBottomNav extends StatelessWidget {
       child: Container(
         height: 80,
         decoration: BoxDecoration(
-          color: bgColor,
+          color: WkmColors.background,
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.06),
@@ -41,44 +39,50 @@ class WkmBottomNav extends StatelessWidget {
         child: Row(
           children: List.generate(4, (index) {
             final selected = selectedIndex == index;
+            final itemColor = selected ? WkmColors.orange : WkmColors.muted;
 
             return Expanded(
               child: GestureDetector(
                 onTap: () => onTap(index),
                 behavior: HitTestBehavior.opaque,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Icon with or without orange circle
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      width: selected ? 48 : 32,
-                      height: selected ? 48 : 32,
-                      decoration: BoxDecoration(
-                        color: selected ? orange : Colors.transparent,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(
-                        child: Icon(
-                          icons[index],
-                          size: selected ? 26 : 26,
-                          color: selected ? Colors.white : orange,
+                child: SizedBox(
+                  height: 68,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Icon with or without orange circle
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        width: selected ? 48 : 32,
+                        height: selected ? 48 : 32,
+                        decoration: BoxDecoration(
+                          color: selected
+                              ? WkmColors.orange
+                              : Colors.transparent,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Icon(
+                            icons[index],
+                            size: 26,
+                            color: selected ? Colors.white : WkmColors.muted,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      labels[index],
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 11,
-                        color: selected ? orange : orange,
-                        fontWeight: selected
-                            ? FontWeight.w700
-                            : FontWeight.w500,
+                      const SizedBox(height: 4),
+                      Text(
+                        labels[index],
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 11,
+                          color: itemColor,
+                          fontWeight: selected
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             );

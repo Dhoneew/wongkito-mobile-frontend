@@ -1,6 +1,8 @@
+import 'package:flutter/material.dart';
+
 import '../../features/profile/repositories/profile_repository.dart';
 import '../../features/profile/viewmodels/profile_viewmodel.dart';
-import 'package:flutter/material.dart';
+import '../../theme/wkm_style.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -10,12 +12,10 @@ class EditProfileScreen extends StatefulWidget {
 }
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
-  static const Color orange = Color(0xFFFF6200);
-  static const Color backgroundColor = Color(0xFFFAF9F9);
-  static const Color textColor = Color(0xFF1A1C1C);
-
   final _formKey = GlobalKey<FormState>();
   late final ProfileViewModel viewModel;
+
+  final _nameController = TextEditingController();
   final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -24,7 +24,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
 
-
   @override
   void initState() {
     super.initState();
@@ -32,12 +31,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     viewModel = ProfileViewModel(ProfileRepository.instance);
     viewModel.loadProfile();
 
-    _usernameController.text = viewModel.profile?.username ?? '';
-    _emailController.text = viewModel.profile?.email ?? '';
+    final profile = viewModel.profile;
+    _nameController.text = profile?.name ?? '';
+    _usernameController.text = profile?.username ?? '';
+    _emailController.text = profile?.email ?? '';
   }
 
   @override
   void dispose() {
+    _nameController.dispose();
     _usernameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
@@ -49,15 +51,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: WkmColors.background,
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
-        backgroundColor: backgroundColor,
-        foregroundColor: textColor,
+        backgroundColor: WkmColors.background,
+        foregroundColor: WkmColors.dark,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.chevron_left, size: 28),
-          onPressed: () => Navigator.pop(context),
-        ),
+        leading: wkmBackButton(() => Navigator.pop(context)),
         title: const Text(
           'Edit Profil',
           style: TextStyle(
@@ -69,13 +69,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         centerTitle: false,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        padding: EdgeInsets.only(
+          left: 24,
+          right: 24,
+          top: 16,
+          bottom: 24 + MediaQuery.of(context).viewInsets.bottom,
+        ),
         child: Form(
           key: _formKey,
           child: Column(
             children: [
               const SizedBox(height: 12),
-              // Avatar with camera icon
               Center(
                 child: Stack(
                   children: [
@@ -84,7 +88,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       height: 120,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: const Color(0xFF87CEEB),
+                        color: WkmColors.softOrange,
                         border: Border.all(color: Colors.white, width: 3),
                         boxShadow: [
                           BoxShadow(
@@ -94,114 +98,148 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           ),
                         ],
                       ),
-                      child: const CircleAvatar(
+                      child: CircleAvatar(
                         radius: 57,
-                        backgroundColor: Color(0xFF87CEEB),
+                        backgroundColor: WkmColors.softOrange,
                         child: Icon(
                           Icons.person,
                           size: 60,
-                          color: Color(0xFFFFE2C7),
+                          color: WkmColors.orange,
                         ),
                       ),
                     ),
                     Positioned(
                       bottom: 0,
                       right: 0,
-                      child: GestureDetector(
-                        onTap: () {
-                          // TODO: Implement image picker
-                        },
-                        child: Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: orange,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
-                          ),
-                          child: const Icon(
-                            Icons.camera_alt,
-                            color: Colors.white,
-                            size: 18,
-                          ),
+                      child: IconButton(
+                        tooltip: 'Info foto profil',
+                        onPressed: _showPhotoInfo,
+                        icon: const Icon(
+                          Icons.camera_alt,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                        style: IconButton.styleFrom(
+                          backgroundColor: WkmColors.orange,
+                          side: const BorderSide(color: Colors.white, width: 2),
+                          minimumSize: const Size(44, 44),
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 8),
+              const Text(
+                'Foto profil belum tersedia pada versi demo',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 11,
+                  color: WkmColors.muted,
+                ),
+              ),
+              const SizedBox(height: 24),
 
-              // Username field
+              // NAMA LENGKAP
               _buildTextField(
-                controller: _usernameController,
-                hintText: 'Username',
-                prefixIcon: Icons.person_outline,
+                controller: _nameController,
+                labelText: 'Nama Lengkap',
+                hintText: 'Nama Lengkap',
+                prefixIcon: Icons.badge_outlined,
+                textInputAction: TextInputAction.next,
+                validator: (value) => (value == null || value.trim().isEmpty)
+                    ? 'Nama wajib diisi'
+                    : null,
               ),
               const SizedBox(height: 16),
 
-              // Email field
+              // USERNAME
+              _buildTextField(
+                controller: _usernameController,
+                labelText: 'Username',
+                hintText: 'Username',
+                prefixIcon: Icons.person_outline,
+                textInputAction: TextInputAction.next,
+                validator: (value) => (value == null || value.trim().isEmpty)
+                    ? 'Username wajib diisi'
+                    : null,
+              ),
+              const SizedBox(height: 16),
+
+              // EMAIL
               _buildTextField(
                 controller: _emailController,
+                labelText: 'Email',
                 hintText: 'Email',
                 prefixIcon: Icons.email_outlined,
                 keyboardType: TextInputType.emailAddress,
-              ),
-              const SizedBox(height: 16),
-
-              // Password field
-              _buildTextField(
-                controller: _passwordController,
-                hintText: 'Password',
-                prefixIcon: Icons.key,
-                isPassword: true,
-                obscureText: _obscurePassword,
-                onToggleObscure: () {
-                  setState(() {
-                    _obscurePassword = !_obscurePassword;
-                  });
+                textInputAction: TextInputAction.next,
+                validator: (value) {
+                  final email = value?.trim() ?? '';
+                  if (email.isEmpty) return 'Email wajib diisi';
+                  if (!ProfileViewModel.emailPattern.hasMatch(email)) {
+                    return 'Format email tidak valid';
+                  }
+                  return null;
                 },
               ),
               const SizedBox(height: 16),
 
-              // Confirm Password field
+              // PASSWORD (opsional, kosongkan jika tidak diubah)
+              _buildTextField(
+                controller: _passwordController,
+                labelText: 'Password Baru (opsional)',
+                hintText: 'Password Baru (opsional)',
+                prefixIcon: Icons.key,
+                isPassword: true,
+                obscureText: _obscurePassword,
+                textInputAction: TextInputAction.next,
+                onToggleObscure: () {
+                  setState(() => _obscurePassword = !_obscurePassword);
+                },
+                validator: (value) {
+                  if (value == null || value.isEmpty) return null;
+                  if (value.length < 6) return 'Password minimal 6 karakter';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+
+              // KONFIRMASI PASSWORD
               _buildTextField(
                 controller: _confirmPasswordController,
-                hintText: 'Confirm Password',
+                labelText: 'Konfirmasi Password Baru',
+                hintText: 'Konfirmasi Password Baru',
                 prefixIcon: Icons.key,
                 isPassword: true,
                 obscureText: _obscureConfirmPassword,
+                textInputAction: TextInputAction.done,
                 onToggleObscure: () {
-                  setState(() {
-                    _obscureConfirmPassword = !_obscureConfirmPassword;
-                  });
+                  setState(
+                    () => _obscureConfirmPassword = !_obscureConfirmPassword,
+                  );
+                },
+                validator: (value) {
+                  if (_passwordController.text.isEmpty) {
+                    return (value == null || value.isEmpty)
+                        ? null
+                        : 'Isi password baru terlebih dahulu';
+                  }
+                  if (value == null || value.isEmpty) {
+                    return 'Konfirmasi password wajib diisi';
+                  }
+                  if (value != _passwordController.text) {
+                    return 'Konfirmasi password tidak cocok';
+                  }
+                  return null;
                 },
               ),
               const SizedBox(height: 32),
 
-              // Save button
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: _saveProfile,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: orange,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(25),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: const Text(
-                    'Simpan Perubahan',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
+              wkmPrimaryButton(
+                label: 'Simpan Perubahan',
+                onPressed: _saveProfile,
               ),
               const SizedBox(height: 24),
             ],
@@ -211,78 +249,139 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
+  void _showPhotoInfo() {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text(
+            'Foto Profil',
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: const Text(
+            'Foto profil belum tersedia pada versi demo.',
+            style: TextStyle(fontFamily: 'Inter', fontSize: 13),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Mengerti'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Widget _buildTextField({
     required TextEditingController controller,
+    required String labelText,
     required String hintText,
     required IconData prefixIcon,
+    String? Function(String?)? validator,
     TextInputType keyboardType = TextInputType.text,
+    TextInputAction textInputAction = TextInputAction.next,
     bool isPassword = false,
     bool obscureText = false,
     VoidCallback? onToggleObscure,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFEAEAEA)),
+    return TextFormField(
+      controller: controller,
+      validator: validator,
+      keyboardType: keyboardType,
+      textInputAction: textInputAction,
+      obscureText: isPassword ? obscureText : false,
+      style: const TextStyle(
+        fontFamily: 'Inter',
+        fontSize: 14,
+        color: WkmColors.dark,
       ),
-      child: TextFormField(
-        controller: controller,
-        keyboardType: keyboardType,
-        obscureText: isPassword ? obscureText : false,
-        style: const TextStyle(
+      decoration: InputDecoration(
+        labelText: labelText,
+        hintText: hintText,
+        hintStyle: const TextStyle(
           fontFamily: 'Inter',
-          fontSize: 14,
-          color: textColor,
+          fontSize: 13,
+          color: WkmColors.muted,
         ),
-        decoration: InputDecoration(
-          hintText: hintText,
-          hintStyle: const TextStyle(
-            fontFamily: 'Inter',
-            fontSize: 14,
-            color: Color(0xFFB0B0B0),
-          ),
-          prefixIcon: Icon(prefixIcon, color: orange, size: 20),
-          suffixIcon: isPassword
-              ? IconButton(
-                  icon: Icon(
-                    obscureText ? Icons.visibility_off : Icons.visibility,
-                    color: const Color(0xFFB0B0B0),
-                    size: 20,
-                  ),
-                  onPressed: onToggleObscure,
-                )
-              : null,
-          border: InputBorder.none,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        labelStyle: const TextStyle(
+          fontFamily: 'Inter',
+          fontSize: 13,
+          color: WkmColors.muted,
+        ),
+        prefixIcon: Icon(prefixIcon, color: WkmColors.orange, size: 20),
+        suffixIcon: isPassword
+            ? IconButton(
+                icon: Icon(
+                  obscureText ? Icons.visibility_off : Icons.visibility,
+                  color: WkmColors.muted,
+                  size: 20,
+                ),
+                onPressed: onToggleObscure,
+              )
+            : null,
+        filled: true,
+        fillColor: Colors.white,
+        errorStyle: const TextStyle(
+          fontFamily: 'Inter',
+          fontSize: 11,
+          color: WkmColors.danger,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: WkmColors.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: WkmColors.border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: WkmColors.orange),
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
         ),
       ),
     );
   }
 
   void _saveProfile() {
-    final success = viewModel.updateProfile(
-      username: _usernameController.text.trim(),
-      email: _emailController.text.trim(),
+    FocusScope.of(context).unfocus();
+
+    // Error inline sudah tampil di masing-masing field; tidak perlu SnackBar
+    // generik yang mengulang pesan yang sama.
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    final wantsPasswordChange = _passwordController.text.isNotEmpty;
+
+    final error = viewModel.updateProfile(
+      name: _nameController.text,
+      username: _usernameController.text,
+      email: _emailController.text,
       password: _passwordController.text,
       confirmPassword: _confirmPasswordController.text,
     );
 
-    if (!success) {
+    if (error != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Password dan konfirmasi password tidak cocok'),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text(error), backgroundColor: WkmColors.danger),
       );
       return;
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Profil berhasil diperbarui'),
-        backgroundColor: Colors.green,
+      SnackBar(
+        content: Text(
+          wantsPasswordChange
+              ? 'Profil berhasil diperbarui. Ganti password masih simulasi lokal dan belum tersimpan.'
+              : 'Profil berhasil diperbarui',
+        ),
+        backgroundColor: WkmColors.success,
       ),
     );
 

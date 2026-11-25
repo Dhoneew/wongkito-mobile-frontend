@@ -1,5 +1,6 @@
 
 import 'package:flutter/material.dart';
+import '../../theme/wkm_style.dart';
 import '../login/login_page.dart';
 
 class OnboardingPage extends StatefulWidget {
@@ -55,12 +56,13 @@ class _OnboardingPageState extends State<OnboardingPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFAF9F9),
+      backgroundColor: WkmColors.background,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            children: [
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              children: [
               const SizedBox(height: 32),
 
               Image.asset(
@@ -80,7 +82,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                   fontFamily: 'Poppins',
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF1A1C1C),
+                  color: WkmColors.dark,
                 ),
               ),
 
@@ -92,24 +94,24 @@ class _OnboardingPageState extends State<OnboardingPage> {
                 style: const TextStyle(
                   fontFamily: 'Inter',
                   fontSize: 12,
-                  color: Color(0xFF1A1C1C),
+                  color: WkmColors.dark,
                 ),
               ),
 
               const SizedBox(height: 20),
 
-              Expanded(
-                child: Center(
+              Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 300, maxHeight: 240),
                   child: Image.asset(
                     images[currentPage],
                     width: 300,
-                    height: 300,
                     fit: BoxFit.contain,
                     errorBuilder: (context, error, stackTrace) {
                       return const Icon(
                         Icons.image_not_supported_outlined,
                         size: 60,
-                        color: Color(0xFFD9D9D9),
+                        color: WkmColors.disabled,
                       );
                     },
                   ),
@@ -133,8 +135,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
                 child: ElevatedButton(
                   onPressed: _nextPage,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFF57C00),
-                    foregroundColor: const Color(0xFFFAF9F9),
+                    backgroundColor: WkmColors.orange,
+                    foregroundColor: WkmColors.background,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(7),
@@ -160,7 +162,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                   'Lewati',
                   style: TextStyle(
                     fontFamily: 'Inter',
-                    color: Color(0xFF1A1C1C),
+                    color: WkmColors.dark,
                     fontSize: 12,
                   ),
                 ),
@@ -170,6 +172,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
             ],
           ),
         ),
+      ),
       ),
     );
   }
@@ -181,8 +184,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
       height: 7,
       decoration: BoxDecoration(
         color: active
-            ? const Color(0xFFF57C00)
-            : const Color(0xFFD9D9D9),
+            ? WkmColors.orange
+            : WkmColors.disabled,
         borderRadius: BorderRadius.circular(10),
       ),
     );

@@ -9,7 +9,7 @@ class MenuViewModel extends ChangeNotifier {
   MenuViewModel(this.repository);
 
   int _selectedCategory = 0;
-  bool _isError = true;
+  bool _isError = false;
   bool _isLoading = false;
 
   int get selectedCategory => _selectedCategory;
@@ -19,6 +19,13 @@ class MenuViewModel extends ChangeNotifier {
   List<Menu> get menus => repository.getMenus();
 
   List<String> get categories => repository.getCategories();
+
+  /// Jumlah menu per kategori dipakai chip agar pengguna tahu isi tiap filter.
+  int countForCategory(int index) {
+    if (index == 0) return menus.length;
+    if (index >= categories.length) return 0;
+    return menus.where((menu) => menu.category == categories[index]).length;
+  }
 
   List<Menu> get filteredMenus {
     if (_selectedCategory == 0) {
@@ -32,11 +39,6 @@ class MenuViewModel extends ChangeNotifier {
 
   void selectCategory(int index) {
     _selectedCategory = index;
-    notifyListeners();
-  }
-
-  void toggleMenuState() {
-    _isError = !_isError;
     notifyListeners();
   }
 

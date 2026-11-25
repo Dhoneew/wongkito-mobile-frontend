@@ -21,13 +21,17 @@ class HelpViewModel extends ChangeNotifier {
   List<String> get categories => repository.getCategories();
 
   List<HelpItem> get filteredHelpItems {
+    final query = _searchQuery.trim().toLowerCase();
+
     return _helpItems.where((item) {
       final matchesCategory =
           _selectedCategory == 'Semua' || item.category == _selectedCategory;
 
       final matchesSearch =
-          item.question.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          item.answer.toLowerCase().contains(_searchQuery.toLowerCase());
+          query.isEmpty ||
+          item.question.toLowerCase().contains(query) ||
+          item.answer.toLowerCase().contains(query) ||
+          item.category.toLowerCase().contains(query);
 
       return matchesCategory && matchesSearch;
     }).toList();

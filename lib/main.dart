@@ -1,6 +1,7 @@
 
 import 'package:flutter/material.dart';
 
+import 'theme/wkm_style.dart';
 import 'screens/splash/splash_screen.dart';
 import 'screens/home/dashboard_screen.dart';
 import 'screens/menu/menu_screen.dart';
@@ -21,7 +22,12 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'WKM',
       theme: ThemeData(
-        scaffoldBackgroundColor: const Color(0xFFFAF9F9),
+        scaffoldBackgroundColor: WkmColors.background,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: WkmColors.orange,
+          surface: WkmColors.background,
+        ),
+        fontFamily: 'Inter',
         useMaterial3: true,
       ),
       home: const SplashScreen(),
@@ -50,15 +56,23 @@ class _MainNavigationState extends State<MainNavigation> {
     selectedIndex = widget.initialIndex;
   }
 
-  final List<Widget> pages = const [
-    DashboardScreen(),
-    MenuScreen(),
-    OrdersScreen(),
-    ProfileScreen(),
-  ];
+  void _selectTab(int index) {
+    if (selectedIndex == index) return;
+    setState(() => selectedIndex = index);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final pages = <Widget>[
+      DashboardScreen(
+        onOpenMenu: () => _selectTab(1),
+        onNavigateTab: _selectTab,
+      ),
+      const MenuScreen(showBackButton: false),
+      const OrdersScreen(),
+      ProfileScreen(onNavigateTab: _selectTab),
+    ];
+
     return Scaffold(
       body: IndexedStack(
         index: selectedIndex,
@@ -66,11 +80,7 @@ class _MainNavigationState extends State<MainNavigation> {
       ),
       bottomNavigationBar: WkmBottomNav(
         selectedIndex: selectedIndex,
-        onTap: (index) {
-          setState(() {
-            selectedIndex = index;
-          });
-        },
+        onTap: _selectTab,
       ),
     );
   }

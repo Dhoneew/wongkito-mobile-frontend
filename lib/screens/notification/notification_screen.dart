@@ -1,46 +1,53 @@
-import '../../features/notification/repositories/notification_repository.dart';
-import '../../features/notification/viewmodels/notification_viewmodel.dart';
 import 'package:flutter/material.dart';
 
+import '../../features/notification/models/notification.dart';
+import '../../features/notification/viewmodels/notification_viewmodel.dart';
+import '../../theme/wkm_style.dart';
+import '../../main.dart';
+
 class NotificationScreen extends StatefulWidget {
-  const NotificationScreen({super.key});
+  /// Diberikan oleh tab induk supaya tap notifikasi bisa mengganti tab tanpa
+  /// membuat MainNavigation baru dan mereset state halaman lain.
+  final ValueChanged<int>? onNavigateTab;
+
+  const NotificationScreen({super.key, this.onNavigateTab});
 
   @override
   State<NotificationScreen> createState() => _NotificationScreenState();
 }
 
 class _NotificationScreenState extends State<NotificationScreen> {
-  static const Color backgroundColor = Color(0xFFFAF9F9);
-  static const Color textColor = Color(0xFF1A1C1C);
-
   late final NotificationViewModel viewModel;
 
   @override
   void initState() {
     super.initState();
-    viewModel = NotificationViewModel(NotificationRepository());
+    viewModel = NotificationViewModel.shared;
     viewModel.loadNotifications();
+    viewModel.addListener(_onNotificationsChanged);
+  }
+
+  void _onNotificationsChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    viewModel.dispose();
+    viewModel.removeListener(_onNotificationsChanged);
     super.dispose();
   }
 
-
   @override
   Widget build(BuildContext context) {
+    final unreadCount = viewModel.unreadCount;
+
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: WkmColors.background,
       appBar: AppBar(
-        backgroundColor: backgroundColor,
-        foregroundColor: textColor,
+        backgroundColor: WkmColors.background,
+        foregroundColor: WkmColors.dark,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.chevron_left, size: 28),
-          onPressed: () => Navigator.pop(context),
-        ),
+        leading: wkmBackButton(() => Navigator.pop(context)),
         title: const Text(
           'Notifikasi',
           style: TextStyle(
@@ -50,88 +57,200 @@ class _NotificationScreenState extends State<NotificationScreen> {
           ),
         ),
         centerTitle: false,
+        actions: [
+          IconButton(
+            tooltip: 'Tandai semua dibaca',
+            onPressed: unreadCount == 0 ? null : _markAllAsRead,
+            icon: const Icon(Icons.done_all, color: WkmColors.orange),
+          ),
+        ],
       ),
-
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         children: [
-          ...viewModel.notifications.map((notification) {
-            return _buildNotificationItem(
-              icon: notification.icon,
-              iconBgColor: notification.iconBgColor,
-              iconColor: notification.iconColor,
-              title: notification.title,
-              subtitle: notification.subtitle,
-              isPromo: notification.isPromo,
-              );
-          }),
+          if (unreadCount > 0)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                '$unreadCount notifikasi belum dibaca',
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 11,
+                  color: WkmColors.muted,
+                ),
+              ),
+            ),
+          if (viewModel.notifications.isEmpty)
+            _buildEmptyState()
+          else
+            ...viewModel.notifications.map(_buildNotificationItem),
         ],
       ),
     );
   }
 
-  Widget _buildNotificationItem({
-    required IconData icon,
-    required Color iconBgColor,
-    required Color iconColor,
-    required String title,
-    required String subtitle,
-    bool isPromo = false,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: isPromo ? const Color(0xFFFFE8E8) : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isPromo ? const Color(0xFFFFCCCC) : const Color(0xFFEAEAEA),
-        ),
-      ),
-      child: Row(
+  Widget _buildEmptyState() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 80),
+      child: Column(
         children: [
           Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: iconBgColor,
-              borderRadius: BorderRadius.circular(10),
+            width: 88,
+            height: 88,
+            decoration: const BoxDecoration(
+              color: WkmColors.softOrange,
+              shape: BoxShape.circle,
             ),
-            child: Icon(
-              icon,
-              color: iconColor,
-              size: 24,
+            child: const Icon(
+              Icons.notifications_none,
+              size: 40,
+              color: WkmColors.orange,
             ),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: textColor,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 11,
-                    color: Color(0xFF888888),
-                  ),
-                ),
-              ],
+          const SizedBox(height: 16),
+          const Text(
+            'Belum ada notifikasi',
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: WkmColors.dark,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Info pesanan dan promo akan muncul di sini.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 12,
+              color: WkmColors.muted,
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildNotificationItem(NotificationModel notification) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: wkmCardDecoration(radius: 12).copyWith(
+        color: notification.isPromo ? WkmColors.dangerSoft : Colors.white,
+        border: Border.all(
+          color: WkmColors.border,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => _handleNotificationTap(notification),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: notification.iconBgColor,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    notification.icon,
+                    color: notification.iconColor,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        notification.title,
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 13,
+                          fontWeight: notification.isRead
+                              ? FontWeight.w500
+                              : FontWeight.bold,
+                          color: WkmColors.dark,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        notification.subtitle,
+                        style: const TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 11,
+                          color: WkmColors.muted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                if (!notification.isRead)
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      color: WkmColors.orange,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _markAllAsRead() {
+    viewModel.markAllAsRead();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Semua notifikasi ditandai sebagai dibaca.'),
+        backgroundColor: WkmColors.success,
+      ),
+    );
+  }
+
+  void _handleNotificationTap(NotificationModel notification) {
+    final wasRead = notification.isRead;
+    viewModel.markAsRead(notification.id);
+
+    final target = notification.target;
+    if (target == 'orders' || target == 'menu') {
+      final index = target == 'orders' ? 2 : 1;
+      if (widget.onNavigateTab != null) {
+        if (context.mounted) Navigator.pop(context);
+        widget.onNavigateTab!(index);
+        return;
+      }
+
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (_) => MainNavigation(initialIndex: index),
+        ),
+        (route) => false,
+      );
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          wasRead
+              ? 'Notifikasi ini sudah dibaca.'
+              : 'Notifikasi ditandai sebagai dibaca.',
+        ),
+        backgroundColor: WkmColors.success,
       ),
     );
   }
 }
-

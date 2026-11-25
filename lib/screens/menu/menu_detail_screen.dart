@@ -4,18 +4,32 @@ import 'package:flutter/material.dart';
 import '../../data/order_store.dart';
 import '../../features/orders/models/cart_item.dart';
 import '../../features/orders/viewmodels/order_viewmodel.dart';
-import '../orders/checkout_screen.dart';
+import '../../theme/wkm_style.dart';
+import '../../widgets/cart_icon.dart';
+import '../../widgets/wkm_skeleton.dart';
+import '../orders/cart_screen.dart';
 
 class MenuDetailScreen extends StatefulWidget {
   final String menuName;
   final String menuPrice;
   final String menuImage;
+  final String? menuDescription;
+
+  /// Optional loading/error state. Data lokal browser langsung tersedia,
+  /// jadi skeleton hanya dipakai bila caller benar-benar sedang memuat.
+  final bool isLoading;
+  final String? errorMessage;
+  final VoidCallback? onRetry;
 
   const MenuDetailScreen({
     super.key,
     this.menuName = 'Kopi Susu Wong Kito',
     this.menuPrice = 'Rp18.000',
     this.menuImage = 'assets/images/kopi_susu.png',
+    this.menuDescription,
+    this.isLoading = false,
+    this.errorMessage,
+    this.onRetry,
   });
 
   @override
@@ -26,14 +40,17 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
   late final OrderViewModel orderViewModel;
   late final MenuDetailViewModel viewModel;
 
-  static const Color orange = Color(0xFFF57C00);
-  static const Color primaryOrange = Color(0xFFF57C00);
+  static const Color orange = WkmColors.orange;
+  static const Color primaryOrange = WkmColors.orange;
   static const Color goldenOrange = Color(0xFFFFB74D);
-  static const Color dark = Color(0xFF1A1C1C);
-  static const Color bg = Color(0xFFFAF9F9);
-  static const Color secondaryText = Color(0xFF666666);
-  static const Color lightText = Color(0xFF888888);
+  static const Color dark = WkmColors.dark;
+  static const Color bg = WkmColors.background;
+  static const Color secondaryText = WkmColors.muted;
+  static const Color lightText = WkmColors.muted;
 
+  /// Pesan validasi terakhir dipakai untuk petunjuk inline dekat field.
+  /// Petunjuk otomatis hilang begitu pilihannya diisi.
+  String? _validationError;
 
   @override
   void initState() {
@@ -44,7 +61,15 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
     final digits = widget.menuPrice.replaceAll(RegExp(r'[^0-9]'), '');
     final price = int.tryParse(digits) ?? 18000;
 
-    viewModel = MenuDetailViewModel(basePrice: price);
+    viewModel = MenuDetailViewModel(
+      basePrice: price,
+      orderType: orderViewModel.orderType == 'Take Away'
+          ? 'Take Away (Bungkus)'
+          : 'Dine-in (Makan di Tempat)',
+      tableNumber: orderViewModel.tableNumber.isEmpty
+          ? 'Meja 05'
+          : orderViewModel.tableNumber,
+    );
     viewModel.addListener(_onViewModelChanged);
   }
 
@@ -54,6 +79,12 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
     }
   }
 
+  String get menuDescription {
+    final description = widget.menuDescription?.trim() ?? '';
+    if (description.isNotEmpty) return description;
+    return '${widget.menuName} dari Warkop Wong Kito, disiapkan segar sesuai pesananmu.';
+  }
+
   @override
   void dispose() {
     viewModel.removeListener(_onViewModelChanged);
@@ -61,14 +92,6 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
     super.dispose();
   }
 
-
-  String rupiah(int value) {
-    final formatted = value.toString().replaceAllMapped(
-      RegExp(r'\B(?=(\d{3})+(?!\d))'),
-      (_) => '.',
-    );
-    return 'Rp$formatted';
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -91,9 +114,23 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
             color: dark,
           ),
         ),
+        actions: [
+          WkmCartIcon(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const CartScreen()),
+              );
+            },
+          ),
+        ],
       ),
       body: SafeArea(
-        child: ListView(
+        child: widget.isLoading
+            ? const WkmMenuDetailSkeleton()
+            : widget.errorMessage != null
+                ? _buildErrorState()
+                : ListView(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           children: [
             // FOTO MENU
@@ -152,7 +189,7 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
                           'TERSEDIA',
                           style: TextStyle(
                             fontFamily: 'Inter',
-                            fontSize: 10,
+                            fontSize: 11,
                             fontWeight: FontWeight.bold,
                             color: dark,
                             letterSpacing: 0.5,
@@ -162,19 +199,24 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    widget.menuPrice,
-                    style: const TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: dark,
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 180),
+                    switchInCurve: Curves.easeOut,
+                    child: Text(
+                      wkmRupiah(viewModel.unitPrice),
+                      key: ValueKey<int>(viewModel.unitPrice),
+                      style: const TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: dark,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 6),
-                  const Text(
-                    'Kopi susu dengan perpaduan espresso robusta dan susu gula aren khas warkop.',
-                    style: TextStyle(
+                  Text(
+                    menuDescription,
+                    style: const TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 12,
                       color: secondaryText,
@@ -216,6 +258,12 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
                     viewModel.selectSugarLevel('No Sugar (0%)');
                   },
                 ),
+                if (_validationError != null &&
+                    _validationError!.contains('gula') &&
+                    viewModel.sugarLevel == null) ...[
+                  const SizedBox(height: 8),
+                  _buildInlineHint('Pilih level gula untuk melanjutkan.'),
+                ],
               ],
             ),
 
@@ -279,6 +327,12 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
                     ),
                   ],
                 ),
+                if (_validationError != null &&
+                    _validationError!.contains('suhu') &&
+                    viewModel.temperature == null) ...[
+                  const SizedBox(height: 8),
+                  _buildInlineHint('Pilih suhu penyajian untuk melanjutkan.'),
+                ],
               ],
             ),
 
@@ -290,14 +344,14 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
               badgeWidget: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEEEEEE),
+                  color: WkmColors.border,
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: const Text(
                   'Pilih Cara Makan',
                   style: TextStyle(
                     fontFamily: 'Inter',
-                    fontSize: 10,
+                    fontSize: 11,
                     color: secondaryText,
                   ),
                 ),
@@ -318,7 +372,7 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFE5E5E5)),
+                      border: Border.all(color: WkmColors.border),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -327,7 +381,7 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
                           'NOMOR MEJA',
                           style: TextStyle(
                             fontFamily: 'Inter',
-                            fontSize: 10,
+                            fontSize: 11,
                             fontWeight: FontWeight.bold,
                             color: secondaryText,
                             letterSpacing: 0.5,
@@ -415,11 +469,11 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
                     ],
                   ),
                   Container(
-                    height: 42,
+                    height: 52,
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
                       color: goldenOrange,
-                      borderRadius: BorderRadius.circular(6),
+                      borderRadius: BorderRadius.circular(8),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withValues(alpha: 0.08),
@@ -432,52 +486,55 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         InkWell(
-                          onTap: () {
-                            viewModel.decreaseQuantity();
-                          },
-                          borderRadius: BorderRadius.circular(4),
+                          onTap: viewModel.decreaseQuantity,
+                          borderRadius: BorderRadius.circular(6),
                           child: Container(
-                            width: 34,
-                            height: 34,
+                            width: 44,
+                            height: 44,
+                            alignment: Alignment.center,
                             decoration: BoxDecoration(
                               color: Colors.white,
-                              borderRadius: BorderRadius.circular(4),
+                              borderRadius: BorderRadius.circular(6),
                             ),
                             child: const Icon(
                               Icons.remove,
-                              size: 16,
+                              size: 17,
                               color: dark,
                             ),
                           ),
                         ),
-                        Container(
-                          width: 44,
-                          alignment: Alignment.center,
-                          child: Text(
-                            '${viewModel.quantity}',
-                            style: const TextStyle(
-                              fontFamily: 'Poppins',
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: dark,
+                        SizedBox(
+                          width: 42,
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 140),
+                            switchInCurve: Curves.easeOut,
+                            child: Text(
+                              '${viewModel.quantity}',
+                              key: ValueKey<int>(viewModel.quantity),
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontFamily: 'Poppins',
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: dark,
+                              ),
                             ),
                           ),
                         ),
                         InkWell(
-                          onTap: () {
-                            viewModel.increaseQuantity();
-                          },
-                          borderRadius: BorderRadius.circular(4),
+                          onTap: viewModel.increaseQuantity,
+                          borderRadius: BorderRadius.circular(6),
                           child: Container(
-                            width: 34,
-                            height: 34,
+                            width: 44,
+                            height: 44,
+                            alignment: Alignment.center,
                             decoration: BoxDecoration(
                               color: Colors.white,
-                              borderRadius: BorderRadius.circular(4),
+                              borderRadius: BorderRadius.circular(6),
                             ),
                             child: const Icon(
                               Icons.add,
-                              size: 16,
+                              size: 17,
                               color: dark,
                             ),
                           ),
@@ -497,52 +554,66 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFE5E5E5)),
+                border: Border.all(color: WkmColors.border),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
                     viewModel.quantity == 0
-                        ? 'Subtotal (0 items with extra shot)'
-                        : 'Subtotal (${viewModel.quantity} item${viewModel.quantity == 1 ? '' : 's'}${viewModel.extraShot == true ? ' with extra shot' : ''})',
+                        ? 'Subtotal (0 item)'
+                        : 'Subtotal (${viewModel.quantity} item'
+                            '${viewModel.extraShot == true ? ' dengan extra shot' : ''})',
                     style: const TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 11,
                       color: secondaryText,
                     ),
                   ),
-                  Text(
-                    viewModel.quantity == 0 ? 'Rp0.000' : rupiah(viewModel.subtotal),
-                    style: const TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: dark,
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 180),
+                    switchInCurve: Curves.easeOut,
+                    child: Text(
+                      wkmRupiah(viewModel.subtotal),
+                      key: ValueKey<int>(viewModel.subtotal),
+                      style: const TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: dark,
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
 
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
+
+            // RINGKASAN CUSTOMISASI (compact, mengikuti pilihan realtime)
+            _buildCustomizationSummary(),
+
+            const SizedBox(height: 10),
 
             // TOMBOL TAMBAH KERANJANG
             SizedBox(
               width: double.infinity,
               height: 48,
               child: ElevatedButton(
-                onPressed: _addToCart,
+                onPressed: viewModel.quantity > 0 ? _addToCart : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: orange,
+                  disabledBackgroundColor: WkmColors.disabled,
                   foregroundColor: Colors.white,
+                  disabledForegroundColor: Colors.white,
+                  overlayColor: Colors.white24,
                   elevation: 0,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
                 child: const Text(
-                  'TAMBAH KERANJANG',
+                  'Tambah ke Keranjang',
                   style: TextStyle(
                     fontFamily: 'Poppins',
                     fontSize: 14,
@@ -554,6 +625,179 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
             ),
 
             const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Petunjuk validasi ringan di dekat komponen yang belum diisi.
+  Widget _buildInlineHint(String message) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: WkmColors.dangerSoft,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.error_outline, size: 14, color: WkmColors.danger),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 11,
+                color: WkmColors.danger,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Ringkasan kecil di dekat subtotal supaya user bisa memindai pilihannya
+  /// sebelum menambah ke keranjang.
+  Widget _buildCustomizationSummary() {
+    final customization = <String>[
+      viewModel.sugarLevel ?? 'Gula belum dipilih',
+      if (viewModel.extraShot == true) 'Extra Shot',
+      viewModel.temperature ?? 'Suhu belum dipilih',
+    ].join(' · ');
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: WkmColors.softOrange,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: WkmColors.warningBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            widget.menuName,
+            style: const TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: dark,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            customization,
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 11,
+              color: secondaryText,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '${viewModel.quantity} item',
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: dark,
+                ),
+              ),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 180),
+                switchInCurve: Curves.easeOut,
+                child: Text(
+                  wkmRupiah(viewModel.subtotal),
+                  key: ValueKey<int>(viewModel.subtotal),
+                  style: const TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: orange,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Error state yang tenang: ikon sederhana, pesan jelas, satu aksi.
+  Widget _buildErrorState() {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: const BoxDecoration(
+                color: WkmColors.softOrange,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.local_cafe_outlined,
+                size: 34,
+                color: orange,
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Detail menu belum tersedia',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: dark,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              widget.errorMessage ?? 'Coba muat ulang detail menu ini.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 12,
+                color: secondaryText,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              height: 46,
+              child: ElevatedButton.icon(
+                onPressed:
+                    widget.onRetry ?? () => Navigator.of(context).maybePop(),
+                icon: const Icon(Icons.refresh, size: 17),
+                label: Text(
+                  widget.onRetry != null ? 'Coba Lagi' : 'Kembali',
+                  style: const TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: orange,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -578,7 +822,11 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
             return Center(
               child: Material(
                 color: Colors.transparent,
-                child: Container(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(context).size.height * 0.82,
+                  ),
+                  child: Container(
                   width: MediaQuery.of(context).size.width * 0.88,
                   padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
                   decoration: BoxDecoration(
@@ -602,19 +850,14 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
                               color: dark,
                             ),
                           ),
-                          GestureDetector(
-                            onTap: () => Navigator.pop(dialogContext),
-                            child: const Padding(
-                              padding: EdgeInsets.all(4),
-                              child: Text(
-                                'X',
-                                style: TextStyle(
-                                  fontFamily: 'Inter',
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w900,
-                                  color: dark,
-                                ),
-                              ),
+                          IconButton(
+                            onPressed: () => Navigator.pop(dialogContext),
+                            icon: const Icon(Icons.close, color: dark),
+                            tooltip: 'Tutup',
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(
+                              minWidth: 44,
+                              minHeight: 44,
                             ),
                           ),
                         ],
@@ -622,8 +865,11 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
 
                       const SizedBox(height: 18),
 
-                      // Grid Meja 1 - 12 (3 kolom x 4 baris)
-                      GridView.builder(
+                      // Grid Meja 1 - 12 (3 kolom x 4 baris), bisa digulir
+                      // pada layar pendek supaya CTA tidak tertutup.
+                      Flexible(
+                        child: SingleChildScrollView(
+                          child: GridView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         itemCount: 12,
@@ -653,7 +899,7 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
                             child: Container(
                               decoration: BoxDecoration(
                                 color: isUnavailable
-                                    ? const Color(0xFFA0A3A8)
+                                    ? WkmColors.muted
                                     : primaryOrange,
                                 borderRadius: BorderRadius.circular(16),
                                 border: isSelected
@@ -676,6 +922,8 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
                             ),
                           );
                         },
+                          ),
+                        ),
                       ),
 
                       const SizedBox(height: 20),
@@ -696,7 +944,7 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
                             'Tersedia',
                             style: TextStyle(
                               fontFamily: 'Inter',
-                              fontSize: 10,
+                              fontSize: 11,
                               fontWeight: FontWeight.w500,
                               color: dark,
                             ),
@@ -706,7 +954,7 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
                             width: 14,
                             height: 14,
                             decoration: BoxDecoration(
-                              color: const Color(0xFFA0A3A8),
+                              color: WkmColors.muted,
                               borderRadius: BorderRadius.circular(3),
                             ),
                           ),
@@ -715,7 +963,7 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
                             'Tidak Tersedia',
                             style: TextStyle(
                               fontFamily: 'Inter',
-                              fontSize: 10,
+                              fontSize: 11,
                               fontWeight: FontWeight.w500,
                               color: dark,
                             ),
@@ -728,8 +976,8 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
                       // Tombol Konfirmasi Meja
                       Center(
                         child: SizedBox(
-                          width: 170,
-                          height: 38,
+                          width: 180,
+                          height: 44,
                           child: ElevatedButton(
                             onPressed: () {
                               viewModel.selectTableNumber('Meja $selectedTableDigits');
@@ -756,6 +1004,7 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
                       ),
                     ],
                   ),
+                  ),
                 ),
               ),
             );
@@ -770,7 +1019,7 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
     return BoxDecoration(
       color: Colors.white,
       borderRadius: BorderRadius.circular(10),
-      border: Border.all(color: const Color(0xFFEAEAEA)),
+      border: Border.all(color: WkmColors.border),
       boxShadow: [
         BoxShadow(
           color: Colors.black.withValues(alpha: 0.04),
@@ -814,7 +1063,7 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
                   style: const TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 11,
-                    color: Color(0xFF555555),
+                    color: WkmColors.muted,
                   ),
                 ),
             ],
@@ -826,7 +1075,7 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
     );
   }
 
-  // RADIO BUTTON INDIKATOR (SESUAI GAMBAR)
+  // RADIO BUTTON INDIKATOR — orange saat dipilih, netral saat tidak.
   Widget _buildRadioIndicator(bool isSelected) {
     return Container(
       width: 18,
@@ -834,8 +1083,8 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         border: Border.all(
-          color: isSelected ? dark : const Color(0xFF888888),
-          width: 1.5,
+          color: isSelected ? orange : WkmColors.disabled,
+          width: 1.6,
         ),
       ),
       child: isSelected
@@ -845,7 +1094,7 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
                 height: 8,
                 decoration: const BoxDecoration(
                   shape: BoxShape.circle,
-                  color: dark,
+                  color: orange,
                 ),
               ),
             )
@@ -853,7 +1102,7 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
     );
   }
 
-  // OPSI ITEM PILIHAN
+  // OPSI ITEM PILIHAN — transisi halus pada background & border.
   Widget _buildOptionItem({
     required String title,
     required bool isSelected,
@@ -865,19 +1114,27 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        curve: Curves.easeOut,
+        constraints: const BoxConstraints(minHeight: 46),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isSelected ? WkmColors.softOrange : Colors.white,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFFE5E5E5)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 3,
-              offset: const Offset(0, 1),
-            ),
-          ],
+          border: Border.all(
+            color: isSelected ? orange : WkmColors.border,
+            width: isSelected ? 1.4 : 1,
+          ),
+          boxShadow: isSelected
+              ? null
+              : [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.03),
+                    blurRadius: 3,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
         ),
         child: Row(
           children: [
@@ -886,9 +1143,11 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
             Expanded(
               child: Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Inter',
                   fontSize: 12,
+                  fontWeight:
+                      isSelected ? FontWeight.w600 : FontWeight.w500,
                   color: dark,
                 ),
               ),
@@ -901,14 +1160,16 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
                   fontSize: 11,
                   fontWeight:
                       trailingBold ? FontWeight.bold : FontWeight.normal,
-                  color: trailingBold ? dark : const Color(0xFF777777),
+                  color: trailingBold
+                      ? (isSelected ? orange : dark)
+                      : WkmColors.muted,
                 ),
               ),
             if (trailingIcon != null)
               Icon(
                 trailingIcon,
                 size: 19,
-                color: dark,
+                color: isSelected ? orange : dark,
               ),
           ],
         ),
@@ -921,17 +1182,46 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
     final validationMessage = viewModel.validateOrder();
 
     if (validationMessage != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(validationMessage),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
+      setState(() => _validationError = validationMessage);
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline,
+                    size: 17, color: WkmColors.orange),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    validationMessage,
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: WkmColors.dark,
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
       return;
     }
 
+    _validationError = null;
+
     orderViewModel.setOrderType(viewModel.orderType);
-    orderViewModel.setTableNumber(viewModel.tableNumber);
+    if (viewModel.orderType.startsWith('Dine-in')) {
+      orderViewModel.setTableNumber(viewModel.tableNumber);
+    }
 
     orderViewModel.addItem(
       CartItem(
@@ -945,11 +1235,49 @@ class _MenuDetailScreenState extends State<MenuDetailScreen> {
       ),
     );
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const CheckoutScreen(),
-      ),
-    );
+    // Hanya memasukkan item ke keranjang. User boleh lanjut memilih menu lain;
+    // checkout tetap hanya bisa dilakukan dari halaman Cart.
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle, color: orange, size: 18),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  '${widget.menuName} berhasil ditambahkan ke keranjang',
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: WkmColors.dark,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(12),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          duration: const Duration(seconds: 3),
+          action: SnackBarAction(
+            label: 'Lihat Keranjang',
+            textColor: orange,
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const CartScreen()),
+              );
+            },
+          ),
+        ),
+      );
   }
 }

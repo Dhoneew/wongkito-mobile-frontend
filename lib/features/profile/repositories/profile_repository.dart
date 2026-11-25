@@ -6,12 +6,14 @@ class ProfileRepository {
 
   static final ProfileRepository instance = ProfileRepository._internal();
 
-  Profile _profile = const Profile(
+  static const _defaultProfile = Profile(
     name: 'Pelanggan Wong Kito',
     description: 'Kelola informasi akun Anda',
     username: '',
     email: '',
   );
+
+  Profile _profile = _defaultProfile;
 
   Profile getProfile() {
     return _profile;
@@ -30,5 +32,10 @@ class ProfileRepository {
 
   void updateProfile(Profile profile) {
     _profile = profile;
+  }
+
+  /// Dipakai saat logout demo agar akun berikutnya tidak mewarisi profil lama.
+  void reset() {
+    _profile = _defaultProfile;
   }
 }

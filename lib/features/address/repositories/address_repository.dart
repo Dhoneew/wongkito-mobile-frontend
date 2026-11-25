@@ -1,16 +1,18 @@
 import '../models/address.dart';
 
 class AddressRepository {
-  final List<Address> _addresses = [
-    const Address(
-      id: '1',
-      recipientName: 'Valentino',
-      phoneNumber: '081234567890',
-      fullAddress: 'Malang, Jawa Timur',
-      label: 'Rumah',
-      isPrimary: true,
-    ),
-  ];
+  static List<Address> _defaultAddresses() => [
+        const Address(
+          id: '1',
+          recipientName: 'Valentino',
+          phoneNumber: '081234567890',
+          fullAddress: 'Malang, Jawa Timur',
+          label: 'Rumah',
+          isPrimary: true,
+        ),
+      ];
+
+  List<Address> _addresses = _defaultAddresses();
 
   List<Address> getAddresses() {
     return List.unmodifiable(_addresses);
@@ -38,5 +40,10 @@ class AddressRepository {
     for (int i = 0; i < _addresses.length; i++) {
       _addresses[i] = _addresses[i].copyWith(isPrimary: _addresses[i].id == id);
     }
+  }
+
+  /// Kembalikan alamat demo ke kondisi awal saat user logout.
+  void reset() {
+    _addresses = _defaultAddresses();
   }
 }

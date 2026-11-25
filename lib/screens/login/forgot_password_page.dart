@@ -1,6 +1,10 @@
 import '../../features/auth/repositories/auth_repository.dart';
 import '../../features/auth/viewmodels/auth_viewmodel.dart';
+
 import 'package:flutter/material.dart';
+
+import '../../theme/wkm_style.dart';
+import 'login_page.dart';
 
 // ==========================================
 // STEP 1: LUPA PASSWORD (INPUT EMAIL)
@@ -13,10 +17,10 @@ class ForgotPasswordPage extends StatefulWidget {
 }
 
 class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
-  static const Color orange = Color(0xFFF57C00);
-  static const Color dark = Color(0xFF1A1C1C);
-  static const Color bg = Color(0xFFFAF9F9);
-  static const Color grey = Color(0xFF666666);
+  static const Color orange = WkmColors.orange;
+  static const Color dark = WkmColors.dark;
+  static const Color bg = WkmColors.background;
+  static const Color grey = WkmColors.muted;
 
   final _emailController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
@@ -47,9 +51,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
     FocusScope.of(context).unfocus();
 
-    final success = await viewModel.sendResetLink(
-      _emailController.text.trim(),
-    );
+    final success = await viewModel.sendResetLink(_emailController.text.trim());
 
     if (!mounted) return;
 
@@ -59,18 +61,26 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           content: Text(
             viewModel.errorMessage ?? 'Gagal mengirim link reset password.',
           ),
-          backgroundColor: Colors.redAccent,
+          backgroundColor: WkmColors.danger,
         ),
       );
       return;
     }
 
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          viewModel.successMessage ??
+              'Link reset berhasil disiapkan (simulasi).',
+        ),
+        backgroundColor: WkmColors.success,
+      ),
+    );
+
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => ResetPasswordPage(
-          email: _emailController.text.trim(),
-        ),
+        builder: (_) => ResetPasswordPage(email: _emailController.text.trim()),
       ),
     );
   }
@@ -82,10 +92,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0.5,
-        leading: IconButton(
-          icon: const Icon(Icons.chevron_left, size: 28, color: dark),
-          onPressed: () => Navigator.pop(context),
-        ),
+        leading: wkmBackButton(() => Navigator.pop(context)),
         titleSpacing: 0,
         title: const Text(
           'Lupa Password',
@@ -125,8 +132,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                 Container(
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: const Color(0xFFFFA21A), width: 1.2),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: WkmColors.orange, width: 1.2),
                   ),
                   child: TextFormField(
                     controller: _emailController,
@@ -136,26 +143,23 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                       fontSize: 13,
                       color: dark,
                     ),
-                    validator: (val) {
-                      if (val == null || val.trim().isEmpty) {
-                        return 'Email wajib diisi';
-                      }
-                      if (!val.contains('@') || !val.contains('.')) {
-                        return 'Format email tidak valid';
-                      }
-                      return null;
-                    },
+                    validator: (val) => viewModel.validateEmail(val ?? ''),
                     decoration: const InputDecoration(
                       hintText: 'Email',
                       hintStyle: TextStyle(
                         fontFamily: 'Inter',
                         fontSize: 13,
-                        color: Color(0xFF888888),
+                        color: WkmColors.muted,
                       ),
                       prefixIcon: Icon(
                         Icons.email,
-                        color: Color(0xFFFFA21A),
+                        color: WkmColors.orange,
                         size: 20,
+                      ),
+                      errorStyle: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 11,
+                        color: WkmColors.danger,
                       ),
                       border: InputBorder.none,
                       contentPadding: EdgeInsets.symmetric(
@@ -169,37 +173,11 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                 const SizedBox(height: 16),
 
                 // Tombol Kirim Link
-                SizedBox(
-                  width: double.infinity,
-                  height: 46,
-                  child: ElevatedButton(
-                    onPressed: viewModel.isLoading ? null : _sendLink,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: orange,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                    ),
-                    child: viewModel.isLoading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Text(
-                            'Kirim Link',
-                            style: TextStyle(
-                              fontFamily: 'Poppins',
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                  ),
+                wkmPrimaryButton(
+                  label: 'Kirim Link',
+                  onPressed: _sendLink,
+                  loading: viewModel.isLoading,
+                  height: 48,
                 ),
 
                 const SizedBox(height: 48),
@@ -209,7 +187,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   width: 170,
                   height: 170,
                   decoration: const BoxDecoration(
-                    color: Color(0xFFFCECDD),
+                    color: WkmColors.softOrange,
                     shape: BoxShape.circle,
                   ),
                   child: Center(
@@ -267,13 +245,13 @@ class ResetPasswordPage extends StatefulWidget {
 }
 
 class _ResetPasswordPageState extends State<ResetPasswordPage> {
-  static const Color orange = Color(0xFFFF5E00);
-  static const Color dark = Color(0xFF1A1C1C);
-  static const Color bg = Color(0xFFFAF9F9);
-  static const Color grey = Color(0xFF666666);
+  static const Color dark = WkmColors.dark;
+  static const Color bg = WkmColors.background;
+  static const Color grey = WkmColors.muted;
 
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
+  final _resetFormKey = GlobalKey<FormState>();
 
   late final AuthViewModel viewModel;
 
@@ -301,41 +279,27 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
   }
 
   // Live validations melalui ViewModel
-  bool get _hasMin8Chars =>
-      _passwordController.text.length >= 8;
+  bool get _hasMin8Chars => _passwordController.text.length >= 8;
 
   bool get _hasLetterAndNumber =>
       viewModel.isPasswordStrong(_passwordController.text);
 
-  bool get _isDifferentAndConfirmed =>
-      viewModel.passwordsMatch(
-        _passwordController.text,
-        _confirmController.text,
-      );
+  bool get _isConfirmed => viewModel.passwordsMatch(
+    _passwordController.text,
+    _confirmController.text,
+  );
 
   Future<void> _savePassword() async {
-    if (!viewModel.isPasswordStrong(_passwordController.text)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Password belum memenuhi seluruh kriteria keamanan',
-          ),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-      return;
-    }
+    FocusScope.of(context).unfocus();
 
+    // Inline validator dan checklist di bawah field sudah menjelaskan
+    // masalahnya; SnackBar duplikat hanya menambah noise.
+    if (!(_resetFormKey.currentState?.validate() ?? false)) return;
+    if (!viewModel.isPasswordStrong(_passwordController.text)) return;
     if (!viewModel.passwordsMatch(
       _passwordController.text,
       _confirmController.text,
     )) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Konfirmasi password tidak cocok!'),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
       return;
     }
 
@@ -351,10 +315,8 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
     if (!success) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            viewModel.errorMessage ?? 'Gagal mereset password.',
-          ),
-          backgroundColor: Colors.redAccent,
+          content: Text(viewModel.errorMessage ?? 'Gagal mereset password.'),
+          backgroundColor: WkmColors.danger,
         ),
       );
       return;
@@ -362,12 +324,9 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
 
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(
-        builder: (_) => const ResetSuccessPage(),
-      ),
+      MaterialPageRoute(builder: (_) => const ResetSuccessPage()),
     );
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -376,10 +335,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0.5,
-        leading: IconButton(
-          icon: const Icon(Icons.chevron_left, size: 28, color: dark),
-          onPressed: () => Navigator.pop(context),
-        ),
+        leading: wkmBackButton(() => Navigator.pop(context)),
         titleSpacing: 0,
         title: const Text(
           'Reset Password',
@@ -393,100 +349,105 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 10),
+          padding: EdgeInsets.only(
+            left: 24,
+            right: 24,
+            top: 28,
+            bottom: 28 + MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: Form(
+            key: _resetFormKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 10),
 
-              // INPUT 1: PASSWORD
-              _buildInputField(
-                controller: _passwordController,
-                hintText: 'Password',
-                icon: Icons.key,
-                obscureText: _obscurePassword,
-                onToggle: () => setState(() => _obscurePassword = !_obscurePassword),
-                onChanged: (_) => setState(() {}),
-              ),
-
-              const SizedBox(height: 14),
-
-              // INPUT 2: KONFIRMASI PASSWORD BARU
-              _buildInputField(
-                controller: _confirmController,
-                hintText: 'Konfirmasi password baru',
-                icon: Icons.key,
-                obscureText: _obscureConfirm,
-                onToggle: () => setState(() => _obscureConfirm = !_obscureConfirm),
-                onChanged: (_) => setState(() {}),
-              ),
-
-              const SizedBox(height: 24),
-
-              // CHECKLIST VALIDASI PASSWORD
-              const Text(
-                'Password harus terdiri dari:',
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: grey,
+                // INPUT 1: PASSWORD
+                _buildInputField(
+                  controller: _passwordController,
+                  hintText: 'Password',
+                  icon: Icons.key,
+                  obscureText: _obscurePassword,
+                  onToggle: () =>
+                      setState(() => _obscurePassword = !_obscurePassword),
+                  onChanged: (_) => setState(() {}),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Password baru wajib diisi';
+                    }
+                    if (!viewModel.isPasswordStrong(value)) {
+                      return 'Minimal 8 karakter, huruf, dan angka';
+                    }
+                    return null;
+                  },
                 ),
-              ),
 
-              const SizedBox(height: 10),
+                const SizedBox(height: 14),
 
-              _buildChecklistItem(
-                title: 'Minimal 8 karakter',
-                isValid: _hasMin8Chars,
-              ),
-              const SizedBox(height: 6),
-              _buildChecklistItem(
-                title: 'Mengandung huruf dan angka',
-                isValid: _hasLetterAndNumber,
-              ),
-              const SizedBox(height: 6),
-              _buildChecklistItem(
-                title: 'Tidak sama dengan password sebelumnya',
-                isValid: _isDifferentAndConfirmed,
-              ),
+                // INPUT 2: KONFIRMASI PASSWORD BARU
+                _buildInputField(
+                  controller: _confirmController,
+                  hintText: 'Konfirmasi password baru',
+                  icon: Icons.key,
+                  obscureText: _obscureConfirm,
+                  onToggle: () =>
+                      setState(() => _obscureConfirm = !_obscureConfirm),
+                  onChanged: (_) => setState(() {}),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Konfirmasi password wajib diisi';
+                    }
+                    if (!viewModel.passwordsMatch(
+                      _passwordController.text,
+                      value,
+                    )) {
+                      return 'Konfirmasi password tidak cocok';
+                    }
+                    return null;
+                  },
+                ),
 
-              const SizedBox(height: 40),
+                const SizedBox(height: 24),
 
-              // TOMBOL SIMPAN PASSWORD
-              SizedBox(
-                width: double.infinity,
-                height: 46,
-                child: ElevatedButton(
-                  onPressed: viewModel.isLoading ? null : _savePassword,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: orange,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
-                    ),
+                // CHECKLIST VALIDASI PASSWORD
+                const Text(
+                  'Password harus terdiri dari:',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: grey,
                   ),
-                  child: viewModel.isLoading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text(
-                          'Simpan Password',
-                          style: TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
                 ),
-              ),
-            ],
+
+                const SizedBox(height: 10),
+
+                _buildChecklistItem(
+                  title: 'Minimal 8 karakter',
+                  isValid: _hasMin8Chars,
+                ),
+                const SizedBox(height: 6),
+                _buildChecklistItem(
+                  title: 'Mengandung huruf dan angka',
+                  isValid: _hasLetterAndNumber,
+                ),
+                const SizedBox(height: 6),
+                _buildChecklistItem(
+                  title: 'Konfirmasi password baru cocok',
+                  isValid: _isConfirmed,
+                ),
+
+                const SizedBox(height: 40),
+
+                // TOMBOL SIMPAN PASSWORD
+                wkmPrimaryButton(
+                  label: 'Simpan Password',
+                  onPressed: _savePassword,
+                  loading: viewModel.isLoading,
+                  height: 48,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -500,39 +461,43 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
     required bool obscureText,
     required VoidCallback onToggle,
     required ValueChanged<String> onChanged,
+    String? Function(String?)? validator,
   }) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: const Color(0xFFFFA21A), width: 1.2),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: WkmColors.orange, width: 1.2),
       ),
-      child: TextField(
+      child: TextFormField(
         controller: controller,
         obscureText: obscureText,
         onChanged: onChanged,
-        style: const TextStyle(
-          fontFamily: 'Inter',
-          fontSize: 13,
-          color: dark,
-        ),
+        validator: validator,
+        textInputAction: TextInputAction.next,
+        style: const TextStyle(fontFamily: 'Inter', fontSize: 13, color: dark),
         decoration: InputDecoration(
           hintText: hintText,
           hintStyle: const TextStyle(
             fontFamily: 'Inter',
             fontSize: 13,
-            color: Color(0xFF888888),
+            color: WkmColors.muted,
           ),
-          prefixIcon: Icon(icon, color: const Color(0xFFFFA21A), size: 20),
+          prefixIcon: Icon(icon, color: WkmColors.orange, size: 20),
           suffixIcon: IconButton(
             icon: Icon(
               obscureText
                   ? Icons.visibility_off_outlined
                   : Icons.visibility_outlined,
-              color: const Color(0xFF888888),
+              color: WkmColors.muted,
               size: 18,
             ),
             onPressed: onToggle,
+          ),
+          errorStyle: const TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 11,
+            color: WkmColors.danger,
           ),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
@@ -544,16 +509,13 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
     );
   }
 
-  Widget _buildChecklistItem({
-    required String title,
-    required bool isValid,
-  }) {
+  Widget _buildChecklistItem({required String title, required bool isValid}) {
     return Row(
       children: [
         Icon(
           Icons.check_circle,
           size: 18,
-          color: isValid ? const Color(0xFF2E7D32) : const Color(0xFFCCCCCC),
+          color: isValid ? WkmColors.success : WkmColors.disabled,
         ),
         const SizedBox(width: 8),
         Text(
@@ -561,7 +523,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
           style: TextStyle(
             fontFamily: 'Inter',
             fontSize: 11,
-            color: isValid ? dark : const Color(0xFF888888),
+            color: isValid ? dark : WkmColors.muted,
             fontWeight: isValid ? FontWeight.w500 : FontWeight.normal,
           ),
         ),
@@ -576,10 +538,10 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
 class ResetSuccessPage extends StatelessWidget {
   const ResetSuccessPage({super.key});
 
-  static const Color orange = Color(0xFFFF5E00);
-  static const Color dark = Color(0xFF1A1C1C);
-  static const Color bg = Color(0xFFFAF9F9);
-  static const Color grey = Color(0xFF666666);
+  static const Color orange = WkmColors.orange;
+  static const Color dark = WkmColors.dark;
+  static const Color bg = WkmColors.background;
+  static const Color grey = WkmColors.muted;
 
   @override
   Widget build(BuildContext context) {
@@ -598,7 +560,7 @@ class ResetSuccessPage extends StatelessWidget {
                 width: 190,
                 height: 190,
                 decoration: const BoxDecoration(
-                  color: Color(0xFFE8F5E9),
+                  color: WkmColors.successSoft,
                   shape: BoxShape.circle,
                 ),
                 child: Center(
@@ -606,7 +568,7 @@ class ResetSuccessPage extends StatelessWidget {
                     width: 130,
                     height: 130,
                     decoration: const BoxDecoration(
-                      color: Color(0xFF2E7D32),
+                      color: WkmColors.success,
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
@@ -622,7 +584,7 @@ class ResetSuccessPage extends StatelessWidget {
 
               // JUDUL SUKSES
               const Text(
-                'Password Berhasil Diubah',
+                'Password Berhasil Diubah (Simulasi)',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontFamily: 'Poppins',
@@ -636,7 +598,7 @@ class ResetSuccessPage extends StatelessWidget {
 
               // SUBTITLE
               const Text(
-                'Sekarang kamu bisa masuk dengan\npassword yang baru.',
+                'Untuk demo, login menerima email dan kata sandi\napa pun yang valid.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontFamily: 'Inter',
@@ -649,29 +611,21 @@ class ResetSuccessPage extends StatelessWidget {
               const Spacer(flex: 3),
 
               // TOMBOL KEMBALI KE LOGIN
-              SizedBox(
-                width: 180,
-                height: 42,
-                child: ElevatedButton(
-                  onPressed: () {
-                    // Kembali ke login page
-                    Navigator.of(context).popUntil((route) => route.isFirst);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: orange,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                  ),
-                  child: const Text(
-                    'Kembali ke Login',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
+              Center(
+                child: SizedBox(
+                  width: 200,
+                  child: wkmPrimaryButton(
+                    label: 'Kembali ke Login',
+                    onPressed: () {
+                      // Bersihkan stack reset password supaya tombol back
+                      // tidak membawa user kembali ke halaman lupa password.
+                      Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(
+                          builder: (_) => const LoginPage(),
+                        ),
+                        (route) => false,
+                      );
+                    },
                   ),
                 ),
               ),

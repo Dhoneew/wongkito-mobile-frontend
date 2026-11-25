@@ -1,10 +1,10 @@
-import '../tracking/tracking_screen.dart';
 import 'package:flutter/material.dart';
 
 import '../../data/order_store.dart';
 import '../../features/orders/models/cart_item.dart';
-import '../../features/orders/viewmodels/order_viewmodel.dart';
-import '../home/promo_detail_screen.dart';
+import '../../main.dart';
+import '../../theme/wkm_style.dart';
+import 'order_success_screen.dart';
 import 'payment_screen.dart';
 
 class CheckoutScreen extends StatefulWidget {
@@ -15,23 +15,15 @@ class CheckoutScreen extends StatefulWidget {
 }
 
 class _CheckoutScreenState extends State<CheckoutScreen> {
-  static const Color orange = Color(0xFFF57C00);
-  static const Color primaryOrange = Color(0xFFF57C00);
-
-  static const Color bg = Color(0xFFFAFAFA);
-  static const Color dark = Color(0xFF292929);
-  static const Color muted = Color(0xFF757575);
-
-  static const Color softOrange = Color(0xFFFFF3E0);
-  static const Color borderColor = Color(0xFFEEEEEE);
-
-  final OrderViewModel viewModel = OrderStore.instance.viewModel;
+  final OrderStore store = OrderStore.instance;
   final TextEditingController noteController = TextEditingController();
+
+  bool _isSubmitting = false;
 
   @override
   void initState() {
     super.initState();
-    noteController.text = viewModel.kitchenNote;
+    noteController.text = store.kitchenNote;
   }
 
   @override
@@ -40,38 +32,246 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     super.dispose();
   }
 
-  String rupiah(int value) {
-    return 'Rp${value.toString().replaceAllMapped(
-      RegExp(r'\B(?=(\d{3})+(?!\d))'),
-      (_) => '.',
-    )}';
+  void _showMessage(String message, {bool error = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: error ? WkmColors.danger : WkmColors.dark,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+      );
+  }
+
+  Future<void> _confirmRemoveItem(CartItem item) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Hapus Item?',
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: WkmColors.dark,
+          ),
+        ),
+        content: Text(
+          '${item.menuName} akan dihapus dari pesanan ini.',
+          style: const TextStyle(fontFamily: 'Inter', fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogCtx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: WkmColors.danger,
+              foregroundColor: Colors.white,
+              elevation: 0,
+            ),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    store.removeItem(item);
+    _showMessage('${item.menuName} dihapus dari pesanan.');
+  }
+
+  void _decrementQuantity(CartItem item) {
+    if (item.quantity <= 1) {
+      _confirmRemoveItem(item);
+      return;
+    }
+    store.updateQuantity(item, item.quantity - 1);
+  }
+
+  Future<void> _submit() async {
+    if (_isSubmitting) return;
+
+    if (store.cart.isEmpty) {
+      _showMessage('Keranjang masih kosong. Tambahkan menu terlebih dahulu.', error: true);
+      return;
+    }
+
+    if (store.orderType == 'Dine-in' && store.tableNumber.trim().isEmpty) {
+      _showMessage('Pilih nomor meja terlebih dahulu.', error: true);
+      return;
+    }
+
+    FocusScope.of(context).unfocus();
+    setState(() => _isSubmitting = true);
+
+    // Beri umpan balik singkat agar tombol tidak terasa "mati" saat ditekan.
+    await Future.delayed(const Duration(milliseconds: 350));
+    if (!mounted) return;
+
+    if (store.paymentMethod != 'QRIS') {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogCtx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text(
+            'Buat Pesanan?',
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 17,
+              fontWeight: FontWeight.bold,
+              color: WkmColors.dark,
+            ),
+          ),
+          content: Text(
+            'Total ${wkmRupiah(store.cartTotal)} dengan metode '
+            '${store.paymentMethod}. Pesanan akan diproses setelah dikonfirmasi.',
+            style: const TextStyle(fontFamily: 'Inter', fontSize: 13),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx, false),
+              child: const Text('Batal'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(dialogCtx, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: WkmColors.orange,
+                foregroundColor: Colors.white,
+                elevation: 0,
+              ),
+              child: const Text('Konfirmasi'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed != true || !mounted) {
+        if (mounted) setState(() => _isSubmitting = false);
+        return;
+      }
+    }
+
+    // checkout() mereset preferensi ke default, jadi metode pembayaran harus
+    // ditangkap lebih awal untuk menentukan tujuan navigasi yang benar.
+    final total = store.cartTotal;
+    final paymentMethod = store.paymentMethod;
+    final orderId = store.checkout();
+
+    if (orderId == null) {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+        _showMessage('Gagal membuat pesanan. Silakan coba lagi.', error: true);
+      }
+      return;
+    }
+
+    if (!mounted) return;
+
+    if (paymentMethod == 'QRIS') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PaymentCodeScreen(
+            orderId: orderId,
+            totalAmount: total,
+          ),
+        ),
+      );
+    } else {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => OrderSuccessScreen(orderId: orderId),
+        ),
+      );
+    }
+
+    if (mounted) setState(() => _isSubmitting = false);
+  }
+
+  Future<void> _chooseTable() async {
+    final selected = await showDialog<String>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Pilih Nomor Meja',
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: WkmColors.dark,
+          ),
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: List.generate(10, (index) {
+              final table = 'Meja ${(index + 1).toString().padLeft(2, '0')}';
+              final isSelected = table == store.tableNumber;
+              return ChoiceChip(
+                label: Text(table),
+                selected: isSelected,
+                onSelected: (_) => Navigator.pop(dialogCtx, table),
+                selectedColor: WkmColors.softOrange,
+                backgroundColor: WkmColors.background,
+                side: BorderSide(
+                  color: isSelected ? WkmColors.orange : WkmColors.border,
+                ),
+                labelStyle: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                  color: isSelected ? WkmColors.dark : WkmColors.muted,
+                ),
+              );
+            }),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: const Text('Batal'),
+          ),
+        ],
+      ),
+    );
+
+    if (selected != null) store.setTableNumber(selected);
   }
 
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: viewModel,
+      animation: store,
       builder: (context, _) {
-        final isEmpty = viewModel.cart.isEmpty;
+        final isEmpty = store.cart.isEmpty;
 
         return Scaffold(
-          backgroundColor: bg,
+          backgroundColor: WkmColors.background,
           appBar: AppBar(
             backgroundColor: Colors.white,
-            foregroundColor: dark,
+            foregroundColor: WkmColors.dark,
             elevation: 0.5,
-            leading: IconButton(
-              icon: const Icon(Icons.chevron_left, size: 28, color: dark),
-              onPressed: () => Navigator.pop(context),
-            ),
+            leading: wkmBackButton(() => Navigator.pop(context)),
             titleSpacing: 0,
             title: const Text(
-              'Keranjang',
+              'Checkout',
               style: TextStyle(
                 fontFamily: 'Poppins',
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
-                color: dark,
+                color: WkmColors.dark,
               ),
             ),
           ),
@@ -81,41 +281,43 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   children: [
                     Expanded(
                       child: ListView(
+                        keyboardDismissBehavior:
+                            ScrollViewKeyboardDismissBehavior.onDrag,
                         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
                         children: [
+                          _buildSectionTitle('Jenis Pesanan'),
+                          const SizedBox(height: 10),
                           _buildOrderType(),
-                          const SizedBox(height: 14),
-                          if (viewModel.orderType == 'Dine-in')
+                          if (store.orderType == 'Dine-in') ...[
+                            const SizedBox(height: 12),
                             _buildTableCard(),
+                          ],
                           const SizedBox(height: 22),
-                          Text(
-                            'Daftar Menu (${viewModel.cart.length} Item)',
-                            style: const TextStyle(
-                              fontFamily: 'Poppins',
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: dark,
-                            ),
+                          _buildSectionTitle(
+                            'Daftar Menu (${store.cart.length} Item)',
                           ),
-                          const SizedBox(height: 12),
-                          ...viewModel.cart.map(_buildCartItem),
-                          const SizedBox(height: 14),
+                          const SizedBox(height: 10),
+                          ...store.cart.map(_buildCartItem),
+                          const SizedBox(height: 18),
+                          _buildSectionTitle('Catatan Pesanan'),
+                          const SizedBox(height: 10),
                           _buildNote(),
-                          const SizedBox(height: 24),
-                          const Text(
-                            'Pilihan Pembayaran',
-                            style: TextStyle(
-                              fontFamily: 'Poppins',
-                              fontSize: 17,
-                              fontWeight: FontWeight.bold,
-                              color: dark,
-                            ),
+                          const SizedBox(height: 22),
+                          _buildSectionTitle('Metode Pembayaran'),
+                          const SizedBox(height: 10),
+                          _buildPayment(
+                            'QRIS',
+                            'Gopay, OVO, DANA, BCA, Livin & lainnya',
+                          ),
+                          _buildPayment(
+                            'E-Wallet Langsung',
+                            'Bayar langsung dengan saldo e-wallet',
+                          ),
+                          _buildPayment(
+                            'Bayar Kasir (Cash / Tunai)',
+                            'Bayar langsung di kasir saat pengambilan',
                           ),
                           const SizedBox(height: 12),
-                          _buildPayment('QRIS', 'Gopay, OVO, Dana, BCA, Livin'),
-                          _buildPayment('E-Wallet Langsung', 'Hubungkan akun Gopay / ShopeePay'),
-                          _buildPayment('Bayar Kasir (Cash / Tunai)', 'Bayar langsung di kasir'),
-                          const SizedBox(height: 14),
                           _buildSummary(),
                         ],
                       ),
@@ -128,243 +330,117 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
-  // TAMPILAN KERANJANG KOSONG (SESUAI GAMBAR)
-  Widget _buildEmptyCartView() {
-    return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // ILUSTRASI KERANJANG KOSONG
-            SizedBox(
-              width: 220,
-              height: 220,
-              child: CustomPaint(
-              painter: _EmptyCartPainter(),
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            // JUDUL & KETERANGAN
-            const Text(
-              'Keranjangmu masih kosong',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: dark,
-              ),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'Yuk pilih makanan dan minuman favoritmu\nuntuk mulai memesan.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 12,
-                color: Color(0xFF666666),
-                height: 1.4,
-              ),
-            ),
-
-            const SizedBox(height: 22),
-
-            // TOMBOL 1: JELAJAHI MENU (SOLID ORANYE)
-            SizedBox(
-              width: 190,
-              height: 38,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-                icon: const Icon(Icons.restaurant, size: 16),
-                label: const Text(
-                  'Jelajahi Menu',
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: primaryOrange,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 10),
-
-            // TOMBOL 2: LIHAT PROMO (OUTLINED ORANYE)
-            SizedBox(
-              width: 190,
-              height: 38,
-              child: OutlinedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const PromoDetailScreen(),
-                    ),
-                  );
-                },
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: primaryOrange, width: 1.2),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                ),
-                child: const Text(
-                  'Lihat Promo',
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: primaryOrange,
-                  ),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 28),
-
-            // KARTU "Mulai dari sini"
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF3E5D4),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF4A443E),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Icon(
-                      Icons.fast_forward,
-                      color: Colors.white,
-                      size: 18,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Mulai dari sini',
-                          style: TextStyle(
-                            fontFamily: 'Poppins',
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: dark,
-                          ),
-                        ),
-                        SizedBox(height: 2),
-                        Text(
-                          'Coba lihat menu favorit dan rekomendasi hari ini.',
-                          style: TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 10,
-                            color: Color(0xFF666666),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+  Widget _buildSectionTitle(String title) {
+    return Text(
+      title,
+      style: const TextStyle(
+        fontFamily: 'Poppins',
+        fontSize: 15,
+        fontWeight: FontWeight.bold,
+        color: WkmColors.dark,
       ),
     );
   }
 
   Widget _buildOrderType() {
-  return Container(
-    padding: const EdgeInsets.all(4),
-    decoration: BoxDecoration(
-      color: const Color(0xFFF1F1F1),
-      borderRadius: BorderRadius.circular(12),
-    ),
-    child: Row(
-      children: [
-        _typeButton('Dine-in', 'Dine-in'),
-        _typeButton('Take Away', 'Take Away'),
-      ],
-    ),
-  );
-}
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: WkmColors.border,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          _typeButton('Dine-in', 'Dine-in'),
+          _typeButton('Take Away', 'Take Away'),
+        ],
+      ),
+    );
+  }
 
   Widget _typeButton(String label, String value) {
-  final selected = viewModel.orderType == value;
+    final selected = store.orderType == value;
 
-  return Expanded(
-    child: GestureDetector(
-      onTap: () => viewModel.setOrderType(value),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 13),
-        decoration: BoxDecoration(
-          color: selected ? Colors.white : Colors.transparent,
+    return Expanded(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
           borderRadius: BorderRadius.circular(9),
-          boxShadow: selected
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06),
-                    blurRadius: 5,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : [],
-        ),
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontFamily: 'Inter',
-            fontSize: 13,
-            fontWeight:
-                selected ? FontWeight.bold : FontWeight.w500,
-            color: selected ? orange : muted,
+          onTap: () => store.setOrderType(value),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(vertical: 13),
+            decoration: BoxDecoration(
+              color: selected ? Colors.white : Colors.transparent,
+              borderRadius: BorderRadius.circular(9),
+              boxShadow: selected
+                  ? [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.06),
+                        blurRadius: 5,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 13,
+                fontWeight: selected ? FontWeight.bold : FontWeight.w500,
+                color: selected ? WkmColors.orange : WkmColors.muted,
+              ),
+            ),
           ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildTableCard() {
     return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: _cardDecoration(),
+      padding: const EdgeInsets.all(14),
+      decoration: wkmCardDecoration(),
       child: Row(
         children: [
-          const Icon(Icons.table_restaurant, color: orange, size: 28),
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: WkmColors.softOrange,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(
+              Icons.table_restaurant,
+              color: WkmColors.orange,
+              size: 22,
+            ),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Lokasi Duduk',
-                    style: TextStyle(fontFamily: 'Inter', fontSize: 12)),
-                Text(viewModel.tableNumber,
-                    style: const TextStyle(
-                      fontFamily: 'Poppins',
-                      fontWeight: FontWeight.bold,
-                    )),
+                const Text(
+                  'Lokasi Duduk',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 11,
+                    color: WkmColors.muted,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  store.tableNumber,
+                  style: const TextStyle(
+                    fontFamily: 'Poppins',
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: WkmColors.dark,
+                  ),
+                ),
               ],
             ),
           ),
@@ -372,7 +448,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             onPressed: _chooseTable,
             child: const Text(
               'Ubah Meja',
-              style: TextStyle(color: orange, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: WkmColors.orange,
+                fontWeight: FontWeight.bold,
+                fontFamily: 'Inter',
+              ),
             ),
           ),
         ],
@@ -380,337 +460,284 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
-  Future<void> _chooseTable() async {
-    final selected = await showDialog<String>(
-      context: context,
-      builder: (context) => SimpleDialog(
-        title: const Text('Pilih Nomor Meja'),
-        children: List.generate(10, (index) {
-          final table = 'Meja ${(index + 1).toString().padLeft(2, '0')}';
-          return SimpleDialogOption(
-            onPressed: () => Navigator.pop(context, table),
-            child: Text(table),
-          );
-        }),
-      ),
-    );
-
-    if (selected != null) {
-      viewModel.setTableNumber(selected);
-    }
-  }
-
-  
-Widget _buildCartItem(CartItem item) {
-  return Container(
-    margin: const EdgeInsets.only(bottom: 12),
-    padding: const EdgeInsets.all(14),
-    decoration: _cardDecoration(),
-    child: Column(
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: Image.asset(
-                item.menuImage,
-                width: 82,
-                height: 88,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) =>
-                    Container(
-                  width: 82,
-                  height: 88,
-                  color: softOrange,
-                  child: const Icon(
-                    Icons.local_cafe,
-                    color: orange,
-                    size: 28,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.menuName,
-                    style: const TextStyle(
-                      fontFamily: 'Poppins',
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      color: dark,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    '${item.temperature}, ${item.sugarLevel}'
-                    '${item.extraShot ? ', Extra Shot' : ''}',
-                    style: const TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 11,
-                      color: muted,
-                    ),
-                  ),
-                  const SizedBox(height: 9),
-                  Text(
-                    rupiah(item.subtotal),
-                    style: const TextStyle(
-                      fontFamily: 'Poppins',
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      color: orange,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        const Divider(height: 1, color: borderColor),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            TextButton.icon(
-              onPressed: () => viewModel.removeItem(item),
-              icon: const Icon(Icons.delete_outline, size: 17),
-              label: const Text('Hapus'),
-              style: TextButton.styleFrom(
-                foregroundColor: muted,
-                padding: EdgeInsets.zero,
-                textStyle: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-            const Spacer(),
-            _quantityButton(
-              Icons.remove,
-              () => viewModel.updateQuantity(item, item.quantity - 1),
-            ),
-            Container(
-              width: 38,
-              height: 34,
-              alignment: Alignment.center,
-              child: Text(
-                '${item.quantity}',
-                style: const TextStyle(
-                  fontFamily: 'Poppins',
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                ),
-              ),
-            ),
-            _quantityButton(
-              Icons.add,
-              () => viewModel.updateQuantity(item, item.quantity + 1),
-            ),
-          ],
-        ),
-      ],
-    ),
-  );
-}
-
-
-  
-Widget _quantityButton(IconData icon, VoidCallback onTap) {
-  return Material(
-    color: softOrange,
-    borderRadius: BorderRadius.circular(8),
-    child: InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: SizedBox(
-        width: 34,
-        height: 34,
-        child: Icon(
-          icon,
-          size: 17,
-          color: orange,
-        ),
-      ),
-    ),
-  );
-}
-
-
-  
-Widget _buildNote() {
-  return Container(
-    padding: const EdgeInsets.all(14),
-    decoration: _cardDecoration(),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Icon(
-              Icons.edit_note,
-              color: orange,
-              size: 20,
-            ),
-            const SizedBox(width: 8),
-            const Text(
-              'Catatan Pesanan',
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
-                color: dark,
-              ),
-            ),
-            const Spacer(),
-            const Text(
-              'Opsional',
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 10,
-                color: muted,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        TextField(
-          controller: noteController,
-          onChanged: (value) => viewModel.setKitchenNote(value),
-          maxLines: 2,
-          style: const TextStyle(
-            fontFamily: 'Inter',
-            fontSize: 12,
-            color: dark,
-          ),
-          decoration: InputDecoration(
-            hintText: 'Contoh: es sedikit, gula dipisah...',
-            hintStyle: const TextStyle(
-              fontSize: 12,
-              color: Color(0xFFAAAAAA),
-            ),
-            filled: true,
-            fillColor: const Color(0xFFFAFAFA),
-            contentPadding: const EdgeInsets.all(12),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(9),
-              borderSide: BorderSide.none,
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-
-  
-Widget _buildPayment(String value, String description) {
-  final selected = viewModel.paymentMethod == value;
-
-  return GestureDetector(
-    onTap: () => viewModel.setPaymentMethod(value),
-    child: AnimatedContainer(
-      duration: const Duration(milliseconds: 180),
+  Widget _buildCartItem(CartItem item) {
+    return Container(
       margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.symmetric(
-        horizontal: 14,
-        vertical: 14,
-      ),
-      decoration: BoxDecoration(
-        color: selected ? softOrange : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: selected ? orange : borderColor,
-          width: selected ? 1.3 : 1,
-        ),
-      ),
-      child: Row(
+      padding: const EdgeInsets.all(14),
+      decoration: wkmCardDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            selected
-                ? Icons.radio_button_checked
-                : Icons.radio_button_off,
-            color: selected ? orange : const Color(0xFFBDBDBD),
-            size: 21,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.asset(
+                  item.menuImage,
+                  width: 76,
+                  height: 82,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => Container(
+                    width: 76,
+                    height: 82,
+                    color: WkmColors.softOrange,
+                    child: const Icon(
+                      Icons.local_cafe,
+                      color: WkmColors.orange,
+                      size: 26,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.menuName,
+                      style: const TextStyle(
+                        fontFamily: 'Poppins',
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: WkmColors.dark,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${item.temperature}, ${item.sugarLevel}'
+                      '${item.extraShot ? ', Extra Shot (+Rp5.000)' : ''}',
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 11,
+                        color: WkmColors.muted,
+                      ),
+                    ),
+                    if (item.note.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'Catatan: ${item.note}',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 11,
+                          fontStyle: FontStyle.italic,
+                          color: WkmColors.muted,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 7),
+                    Text(
+                      wkmRupiah(item.subtotal),
+                      style: const TextStyle(
+                        fontFamily: 'Poppins',
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: WkmColors.orange,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
+          const SizedBox(height: 10),
+          const Divider(height: 1, color: WkmColors.border),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              TextButton.icon(
+                onPressed: () => _confirmRemoveItem(item),
+                icon: const Icon(Icons.delete_outline, size: 16),
+                label: const Text('Hapus'),
+                style: TextButton.styleFrom(
+                  foregroundColor: WkmColors.danger,
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  textStyle: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              _quantityButton(
+                Icons.remove,
+                () => _decrementQuantity(item),
+              ),
+              SizedBox(
+                width: 38,
+                child: Text(
+                  '${item.quantity}',
+                  textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontFamily: 'Poppins',
-                    fontSize: 13,
                     fontWeight: FontWeight.bold,
-                    color: dark,
+                    fontSize: 13,
+                    color: WkmColors.dark,
                   ),
                 ),
-                const SizedBox(height: 3),
-                Text(
-                  description,
-                  style: const TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 11,
-                    color: muted,
+              ),
+              _quantityButton(
+                Icons.add,
+                () => store.updateQuantity(item, item.quantity + 1),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _quantityButton(IconData icon, VoidCallback onTap) {
+    return Material(
+      color: WkmColors.softOrange,
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: SizedBox(
+          width: 34,
+          height: 34,
+          child: Icon(icon, size: 17, color: WkmColors.orange),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNote() {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: wkmCardDecoration(),
+      child: TextField(
+        controller: noteController,
+        onChanged: (value) => store.setKitchenNote(value),
+        maxLines: 2,
+        style: const TextStyle(
+          fontFamily: 'Inter',
+          fontSize: 12,
+          color: WkmColors.dark,
+        ),
+        decoration: InputDecoration(
+          hintText: 'Contoh: es sedikit, gula dipisah, sambal terpisah...',
+          hintStyle: const TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 12,
+            color: WkmColors.hint,
+          ),
+          filled: true,
+          fillColor: WkmColors.background,
+          contentPadding: const EdgeInsets.all(12),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(9),
+            borderSide: BorderSide.none,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPayment(String value, String description) {
+    final selected = store.paymentMethod == value;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => store.setPaymentMethod(value),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+            decoration: BoxDecoration(
+              color: selected ? WkmColors.softOrange : Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: selected ? WkmColors.orange : WkmColors.border,
+                width: selected ? 1.3 : 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  selected ? Icons.radio_button_checked : Icons.radio_button_off,
+                  color: selected ? WkmColors.orange : WkmColors.disabled,
+                  size: 21,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        value,
+                        style: const TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: WkmColors.dark,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        description,
+                        style: const TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 11,
+                          color: WkmColors.muted,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
+                if (selected)
+                  const Icon(
+                    Icons.check_circle,
+                    color: WkmColors.orange,
+                    size: 18,
+                  ),
               ],
             ),
           ),
-          if (selected)
-            const Icon(
-              Icons.check_circle,
-              color: orange,
-              size: 18,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSummary() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: wkmCardDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Ringkasan Pembayaran',
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+              color: WkmColors.dark,
             ),
+          ),
+          const SizedBox(height: 14),
+          _summaryRow('Subtotal', wkmRupiah(store.cartTotal)),
+          _summaryRow('Biaya Layanan', wkmRupiah(0)),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: Divider(color: WkmColors.border),
+          ),
+          _summaryRow(
+            'Total Pembayaran',
+            wkmRupiah(store.cartTotal),
+            bold: true,
+          ),
         ],
       ),
-    ),
-  );
-}
-
-
- 
-Widget _buildSummary() {
-  return Container(
-    padding: const EdgeInsets.all(16),
-    decoration: _cardDecoration(),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Ringkasan Pembayaran',
-          style: TextStyle(
-            fontFamily: 'Poppins',
-            fontWeight: FontWeight.bold,
-            fontSize: 14,
-            color: dark,
-          ),
-        ),
-        const SizedBox(height: 16),
-        _summaryRow('Subtotal', rupiah(viewModel.cartTotal)),
-        _summaryRow('Biaya Layanan', rupiah(0)),
-        const Padding(
-          padding: EdgeInsets.symmetric(vertical: 8),
-          child: Divider(color: borderColor),
-        ),
-        _summaryRow(
-          'Total Pembayaran',
-          rupiah(viewModel.cartTotal),
-          bold: true,
-        ),
-      ],
-    ),
-  );
-}
-
+    );
+  }
 
   Widget _summaryRow(String label, String price, {bool bold = false}) {
     return Padding(
@@ -722,8 +749,9 @@ Widget _buildSummary() {
               label,
               style: TextStyle(
                 fontFamily: 'Inter',
-                fontSize: bold ? 15 : 13,
+                fontSize: bold ? 14 : 13,
                 fontWeight: bold ? FontWeight.bold : FontWeight.normal,
+                color: bold ? WkmColors.dark : WkmColors.muted,
               ),
             ),
           ),
@@ -733,6 +761,7 @@ Widget _buildSummary() {
               fontFamily: 'Poppins',
               fontSize: bold ? 17 : 13,
               fontWeight: FontWeight.bold,
+              color: bold ? WkmColors.orange : WkmColors.dark,
             ),
           ),
         ],
@@ -740,282 +769,106 @@ Widget _buildSummary() {
     );
   }
 
-  
-Widget _buildPayButton() {
-  return SafeArea(
-    top: false,
-    child: Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: const Border(
-          top: BorderSide(color: borderColor),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, -3),
-          ),
-        ],
-      ),
-      child: SizedBox(
-        width: double.infinity,
-        height: 52,
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: orange,
-            foregroundColor: Colors.white,
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+  Widget _buildPayButton() {
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: const Border(top: BorderSide(color: WkmColors.border)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 10,
+              offset: const Offset(0, -3),
             ),
-          ),
-          onPressed: viewModel.cart.isEmpty ? null : _confirmOrder,
-          child: Text(
-            'Bayar & Buat Pesanan  •  ${rupiah(viewModel.cartTotal)}',
-            style: const TextStyle(
-              fontFamily: 'Poppins',
-              fontWeight: FontWeight.w700,
-              fontSize: 14,
-            ),
-          ),
+          ],
+        ),
+        child: wkmPrimaryButton(
+          label: 'Buat Pesanan  ·  ${wkmRupiah(store.cartTotal)}',
+          onPressed: _submit,
+          loading: _isSubmitting,
+          height: 52,
         ),
       ),
-    ),
-  );
-}
-
-
-  Future<void> _confirmOrder() async {
-  // QRIS
-  if (viewModel.paymentMethod == 'QRIS') {
-    final totalAmount = viewModel.cartTotal;
-    final orderId = viewModel.checkout();
-
-    if (orderId == null || !mounted) return;
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => PaymentCodeScreen(
-          orderId: orderId,
-          totalAmount: totalAmount,
-        ),
-      ),
-    );
-
-    return;
-  }
-
-  // Cash / E-Wallet
-  final confirm = await showDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Buat Pesanan?'),
-      content: Text(
-        'Total ${rupiah(viewModel.cartTotal)} melalui ${viewModel.paymentMethod}. '
-        'Lanjutkan membuat pesanan?',
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: const Text('Batal'),
-        ),
-        ElevatedButton(
-          onPressed: () => Navigator.pop(context, true),
-          child: const Text('Konfirmasi'),
-        ),
-      ],
-    ),
-  );
-
-  if (confirm != true || !mounted) return;
-
-  final orderId = viewModel.checkout();
-
-  if (orderId == null || !mounted) return;
-
-  await showDialog<void>(
-    context: context,
-    barrierDismissible: false,
-    builder: (context) => AlertDialog(
-      icon: const Icon(Icons.check_circle, color: Colors.green, size: 48),
-      title: const Text('Pesanan Berhasil Dibuat!'),
-      content: const Text(
-        'Pesanan kamu sudah tercatat. Buka menu Pesanan untuk melihat statusnya.',
-      ),
-      actions: [
-        ElevatedButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Selesai'),
-        ),
-      ],
-    ),
-  );
-
-  if (!mounted) return;
-
-  Navigator.pushReplacement(
-    context,
-    MaterialPageRoute(
-      builder: (_) => TrackingScreen(
-        orderId: orderId,
-        total: viewModel.orders.first.price,
-      ),
-    ),
-  );
-}
-
-  
-BoxDecoration _cardDecoration() {
-  return BoxDecoration(
-    color: Colors.white,
-    borderRadius: BorderRadius.circular(12),
-    border: Border.all(
-      color: borderColor,
-      width: 0.8,
-    ),
-    boxShadow: [
-      BoxShadow(
-        color: Colors.black.withValues(alpha: 0.035),
-        blurRadius: 10,
-        offset: const Offset(0, 3),
-      ),
-    ],
-  );
-}
-}
-
-
-// PAINTER ILUSTRASI KERANJANG KOSONG (SESUAI GAMBAR REFERENSI)
-class _EmptyCartPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final cx = size.width / 2;
-    final cy = size.height / 2;
-
-    // 1. Lingkaran Background Krem Lembut
-    final bgPaint = Paint()..color = const Color(0xFFF7EFE6);
-    canvas.drawCircle(Offset(cx, cy + 6), 84, bgPaint);
-
-    // 2. Gagang Keranjang (Handle)
-    final handlePaint = Paint()
-      ..color = const Color(0xFFFF6600)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 7.0
-      ..strokeCap = StrokeCap.round;
-
-    final handleBar = Path();
-    handleBar.moveTo(cx - 58, cy - 36);
-    handleBar.lineTo(cx - 32, cy - 34);
-    canvas.drawPath(handleBar, handlePaint);
-
-    // Batang gagang ke bawah
-    final handleStem = Paint()
-      ..color = const Color(0xFF7A6B5D)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 4.5
-      ..strokeCap = StrokeCap.round;
-    canvas.drawLine(Offset(cx - 48, cy - 35), Offset(cx - 42, cy - 14), handleStem);
-
-    // 3. Badan Keranjang Belakang / Perspektif
-    final sideBasket = Path();
-    sideBasket.moveTo(cx + 12, cy - 18);
-    sideBasket.lineTo(cx + 42, cy - 25);
-    sideBasket.lineTo(cx + 36, cy + 22);
-    sideBasket.lineTo(cx + 10, cy + 28);
-    sideBasket.close();
-    canvas.drawPath(
-      sideBasket,
-      Paint()..color = const Color(0xFFE64A00),
-    );
-
-    // 4. Muka Depan Keranjang (Orange Cerah)
-    final frontBasket = Path();
-    frontBasket.moveTo(cx - 48, cy - 28);
-    frontBasket.lineTo(cx + 12, cy - 18);
-    frontBasket.lineTo(cx + 10, cy + 28);
-    frontBasket.lineTo(cx - 38, cy + 28);
-    frontBasket.close();
-
-    final frontPaint = Paint()
-      ..shader = const LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [Color(0xFFFF851B), Color(0xFFFF5200)],
-      ).createShader(Rect.fromLTWH(cx - 48, cy - 28, 60, 56));
-    canvas.drawPath(frontBasket, frontPaint);
-
-    // 5. Rangka Bawah (Chassis) & Roda
-    final chassisPaint = Paint()
-      ..color = const Color(0xFF7A6B5D)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 4.0
-      ..strokeCap = StrokeCap.round;
-
-    // Batang penghubung roda
-    canvas.drawLine(Offset(cx - 36, cy + 28), Offset(cx - 40, cy + 40), chassisPaint);
-    canvas.drawLine(Offset(cx + 8, cy + 28), Offset(cx - 2, cy + 40), chassisPaint);
-    canvas.drawLine(Offset(cx - 42, cy + 40), Offset(cx + 34, cy + 40), chassisPaint);
-
-    // Tiga Roda
-    final wheelPaint = Paint()..color = const Color(0xFF5A4A3D);
-    canvas.drawCircle(Offset(cx - 34, cy + 46), 7.5, wheelPaint);
-    canvas.drawCircle(Offset(cx - 1, cy + 46), 7.5, wheelPaint);
-    canvas.drawCircle(Offset(cx + 30, cy + 46), 7.5, wheelPaint);
-
-    // Titik tengah roda
-    final wheelCenter = Paint()..color = const Color(0xFF8D7C6F);
-    canvas.drawCircle(Offset(cx - 34, cy + 46), 2.5, wheelCenter);
-    canvas.drawCircle(Offset(cx - 1, cy + 46), 2.5, wheelCenter);
-    canvas.drawCircle(Offset(cx + 30, cy + 46), 2.5, wheelCenter);
-
-    // 6. Speech Bubble Tanda Tanya (?) di Atas Keranjang
-    final bubbleRect = RRect.fromRectAndRadius(
-      Rect.fromCenter(center: Offset(cx + 16, cy - 52), width: 44, height: 34),
-      const Radius.circular(16),
-    );
-
-    // Ekor balon
-    final tailPath = Path();
-    tailPath.moveTo(cx + 4, cy - 40);
-    tailPath.lineTo(cx + 4, cy - 30);
-    tailPath.lineTo(cx + 14, cy - 38);
-    tailPath.close();
-
-    final bubbleBg = Paint()..color = const Color(0xFFFAF7F2);
-    final bubbleBorder = Paint()
-      ..color = const Color(0xFFC7BCB0)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.5
-      ..strokeCap = StrokeCap.round;
-
-    canvas.drawRRect(bubbleRect, bubbleBg);
-    canvas.drawPath(tailPath, bubbleBg);
-    canvas.drawRRect(bubbleRect, bubbleBorder);
-    canvas.drawPath(tailPath, bubbleBorder);
-
-    // Tanda Tanya (?) di dalam Balon
-    final textPainter = TextPainter(
-      text: const TextSpan(
-        text: '?',
-        style: TextStyle(
-          fontFamily: 'Poppins',
-          fontSize: 20,
-          fontWeight: FontWeight.w900,
-          color: Color(0xFFB0A294),
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    );
-    textPainter.layout();
-    textPainter.paint(
-      canvas,
-      Offset(cx + 16 - (textPainter.width / 2), cy - 52 - (textPainter.height / 2)),
     );
   }
 
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  Widget _buildEmptyCartView() {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 110,
+              height: 110,
+              decoration: const BoxDecoration(
+                color: WkmColors.softOrange,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.shopping_cart_outlined,
+                size: 48,
+                color: WkmColors.orange,
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Belum ada yang di-checkout',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: WkmColors.dark,
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Tambahkan menu favoritmu ke keranjang, lalu lanjutkan ke pembayaran.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 12,
+                color: WkmColors.muted,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 24),
+            wkmPrimaryButton(
+              label: 'Jelajahi Menu',
+              icon: Icons.restaurant,
+              height: 46,
+              onPressed: () {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const MainNavigation(initialIndex: 1),
+                  ),
+                  (route) => false,
+                );
+              },
+            ),
+            const SizedBox(height: 10),
+            wkmOutlineButton(
+              label: 'Lihat Pesanan Saya',
+              height: 46,
+              onPressed: () {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const MainNavigation(initialIndex: 2),
+                  ),
+                  (route) => false,
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

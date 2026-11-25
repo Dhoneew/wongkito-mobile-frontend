@@ -8,6 +8,7 @@ class Order {
   final String tableNumber;
   final String paymentMethod;
   final String note;
+  final String paymentStatus;
   final List<Map<String, dynamic>> details;
 
   const Order({
@@ -21,5 +22,6 @@ class Order {
     required this.paymentMethod,
     required this.note,
     required this.details,
+    this.paymentStatus = 'Lunas',
   });
 }

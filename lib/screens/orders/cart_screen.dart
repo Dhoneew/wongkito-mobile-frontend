@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../data/order_store.dart';
-import '../home/promo_detail_screen.dart';
+import '../../features/orders/models/cart_item.dart';
+import '../../main.dart';
+import '../../theme/wkm_style.dart';
 import 'checkout_screen.dart';
 
 class CartScreen extends StatefulWidget {
@@ -12,21 +14,83 @@ class CartScreen extends StatefulWidget {
 }
 
 class _CartScreenState extends State<CartScreen> {
-  static const Color orange = Color(0xFFF79F1A);
-  static const Color primaryOrange = Color(0xFFFF6200);
-  static const Color bg = Color(0xFFFAF9F9);
-  static const Color dark = Color(0xFF1A1C1C);
-  static const Color muted = Color(0xFF757575);
-  static const Color softOrange = Color(0xFFFFF3E0);
-  static const Color borderColor = Color(0xFFEEEEEE);
+  static const Color orange = WkmColors.orange;
+  static const Color primaryOrange = WkmColors.orange;
+  static const Color bg = WkmColors.background;
+  static const Color dark = WkmColors.dark;
+  static const Color muted = WkmColors.muted;
+  static const Color softOrange = WkmColors.softOrange;
+  static const Color borderColor = WkmColors.border;
 
   final OrderStore store = OrderStore.instance;
 
-  String rupiah(int value) {
-    return 'Rp${value.toString().replaceAllMapped(
-          RegExp(r'\B(?=(\d{3})+(?!\d))'),
-          (_) => '.',
-        )}';
+  Future<void> _confirmRemoveItem(CartItem item) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        title: const Text(
+          'Hapus Item?',
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: dark,
+          ),
+        ),
+        content: Text(
+          '${item.menuName} akan dihapus dari keranjang.',
+          style: const TextStyle(fontFamily: 'Inter', fontSize: 13, color: dark),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: const Text('Batal', style: TextStyle(color: muted)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogCtx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: WkmColors.danger,
+              foregroundColor: Colors.white,
+              elevation: 0,
+            ),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    store.removeItem(item);
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text('${item.menuName} dihapus dari keranjang'),
+          backgroundColor: WkmColors.dark,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          duration: const Duration(seconds: 4),
+          action: SnackBarAction(
+            label: 'Urungkan',
+            textColor: orange,
+            onPressed: () {
+              // Jangan menggandakan item jika sudah dikembalikan lewat aksi lain.
+              if (!store.cart.contains(item)) store.addItem(item);
+            },
+          ),
+        ),
+      );
+  }
+
+  void _decrementQuantity(CartItem item) {
+    if (item.quantity <= 1) {
+      _confirmRemoveItem(item);
+      return;
+    }
+    store.updateQuantity(item, item.quantity - 1);
   }
 
   Future<void> _editItemNote(CartItem item) async {
@@ -52,7 +116,11 @@ class _CartScreenState extends State<CartScreen> {
             style: const TextStyle(fontFamily: 'Inter', fontSize: 13, color: dark),
             decoration: InputDecoration(
               hintText: 'Contoh: es sedikit, gula dipisah...',
-              hintStyle: const TextStyle(fontFamily: 'Inter', fontSize: 12, color: Color(0xFFAAAAAA)),
+              hintStyle: const TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 12,
+                color: WkmColors.hint,
+              ),
               filled: true,
               fillColor: bg,
               border: OutlineInputBorder(
@@ -215,7 +283,16 @@ class _CartScreenState extends State<CartScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      rupiah(item.subtotal),
+                      '${wkmRupiah(item.price)} / item',
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 11,
+                        color: muted,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Subtotal ${wkmRupiah(item.subtotal)}',
                       style: const TextStyle(
                         fontFamily: 'Poppins',
                         fontWeight: FontWeight.bold,
@@ -234,11 +311,11 @@ class _CartScreenState extends State<CartScreen> {
           Row(
             children: [
               TextButton.icon(
-                onPressed: () => store.removeItem(item),
+                onPressed: () => _confirmRemoveItem(item),
                 icon: const Icon(Icons.delete_outline, size: 17),
                 label: const Text('Hapus'),
                 style: TextButton.styleFrom(
-                  foregroundColor: Colors.redAccent,
+                  foregroundColor: WkmColors.danger,
                   padding: EdgeInsets.zero,
                   textStyle: const TextStyle(
                     fontFamily: 'Inter',
@@ -250,7 +327,7 @@ class _CartScreenState extends State<CartScreen> {
               const Spacer(),
               _quantityButton(
                 Icons.remove,
-                () => store.updateQuantity(item, item.quantity - 1),
+                () => _decrementQuantity(item),
               ),
               Container(
                 width: 38,
@@ -318,7 +395,7 @@ class _CartScreenState extends State<CartScreen> {
                 style: const TextStyle(fontFamily: 'Inter', fontSize: 13, color: muted),
               ),
               Text(
-                rupiah(store.cartTotal),
+                wkmRupiah(store.cartTotal),
                 style: const TextStyle(
                   fontFamily: 'Poppins',
                   fontSize: 13,
@@ -345,7 +422,7 @@ class _CartScreenState extends State<CartScreen> {
                 ),
               ),
               Text(
-                rupiah(store.cartTotal),
+                wkmRupiah(store.cartTotal),
                 style: const TextStyle(
                   fontFamily: 'Poppins',
                   fontSize: 17,
@@ -383,7 +460,7 @@ class _CartScreenState extends State<CartScreen> {
           child: ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: primaryOrange,
-              disabledBackgroundColor: const Color(0xFFCCCCCC),
+              disabledBackgroundColor: WkmColors.disabled,
               foregroundColor: Colors.white,
               elevation: 0,
               shape: RoundedRectangleBorder(
@@ -399,7 +476,7 @@ class _CartScreenState extends State<CartScreen> {
                   }
                 : null,
             child: Text(
-              'Lanjut ke Checkout  •  ${rupiah(store.cartTotal)}',
+              'Lanjut Checkout',
               style: const TextStyle(
                 fontFamily: 'Poppins',
                 fontWeight: FontWeight.w700,
@@ -442,7 +519,7 @@ class _CartScreenState extends State<CartScreen> {
               style: TextStyle(
                 fontFamily: 'Inter',
                 fontSize: 12,
-                color: Color(0xFF666666),
+                color: WkmColors.muted,
                 height: 1.4,
               ),
             ),
@@ -451,10 +528,18 @@ class _CartScreenState extends State<CartScreen> {
               width: 190,
               height: 40,
               child: ElevatedButton.icon(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const MainNavigation(initialIndex: 1),
+                    ),
+                    (route) => false,
+                  );
+                },
                 icon: const Icon(Icons.restaurant, size: 16),
                 label: const Text(
-                  'Kembali Belanja',
+                  'Mulai Belanja',
                   style: TextStyle(
                     fontFamily: 'Poppins',
                     fontSize: 12,
@@ -477,9 +562,12 @@ class _CartScreenState extends State<CartScreen> {
               height: 40,
               child: OutlinedButton(
                 onPressed: () {
-                  Navigator.push(
+                  Navigator.pushAndRemoveUntil(
                     context,
-                    MaterialPageRoute(builder: (_) => const PromoDetailScreen()),
+                    MaterialPageRoute(
+                      builder: (_) => const MainNavigation(initialIndex: 0),
+                    ),
+                    (route) => false,
                   );
                 },
                 style: OutlinedButton.styleFrom(
@@ -544,7 +632,7 @@ class _EmptyCartPainter extends CustomPainter {
     );
 
     final cartStroke = Paint()
-      ..color = const Color(0xFFFF6200)
+      ..color = WkmColors.orange
       ..style = PaintingStyle.stroke
       ..strokeWidth = 4.2
       ..strokeCap = StrokeCap.round
@@ -568,7 +656,7 @@ class _EmptyCartPainter extends CustomPainter {
       ..lineTo(cx + 32, cy + 36);
     canvas.drawPath(handlePath, cartStroke);
 
-    final wheelPaint = Paint()..color = const Color(0xFF1A1C1C);
+    final wheelPaint = Paint()..color = WkmColors.dark;
     canvas.drawCircle(Offset(cx - 20, cy + 52), 7, wheelPaint);
     canvas.drawCircle(Offset(cx + 22, cy + 52), 7, wheelPaint);
   }

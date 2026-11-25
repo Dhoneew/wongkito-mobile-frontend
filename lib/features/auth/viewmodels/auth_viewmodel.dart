@@ -1,9 +1,13 @@
 import 'package:flutter/foundation.dart';
 
+import '../../profile/models/profile.dart';
+import '../../profile/repositories/profile_repository.dart';
 import '../models/auth_user.dart';
 import '../repositories/auth_repository.dart';
 
 class AuthViewModel extends ChangeNotifier {
+  static final RegExp emailPattern = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+
   final AuthRepository repository;
 
   AuthViewModel(this.repository);
@@ -19,6 +23,25 @@ class AuthViewModel extends ChangeNotifier {
   String? get successMessage => _successMessage;
 
   bool get hasUser => _currentUser != null;
+
+  /// Pesan validasi yang dipakai bersama oleh form login, register, dan lupa password.
+  String? validateEmail(String value) {
+    final email = value.trim();
+    if (email.isEmpty) return 'Email wajib diisi';
+    if (!emailPattern.hasMatch(email)) return 'Format email tidak valid';
+    return null;
+  }
+
+  String? validateUsername(String value) {
+    if (value.trim().isEmpty) return 'Username wajib diisi';
+    return null;
+  }
+
+  String? validatePassword(String value, {int minLength = 6}) {
+    if (value.isEmpty) return 'Kata sandi wajib diisi';
+    if (value.length < minLength) return 'Minimal $minLength karakter';
+    return null;
+  }
 
   bool isPasswordStrong(String password) {
     final hasMin8Chars = password.length >= 8;
@@ -37,6 +60,20 @@ class AuthViewModel extends ChangeNotifier {
   // LOGIN
 
   Future<bool> login({required String email, required String password}) async {
+    final emailError = validateEmail(email);
+    if (emailError != null) {
+      _errorMessage = emailError;
+      notifyListeners();
+      return false;
+    }
+
+    final passwordError = validatePassword(password);
+    if (passwordError != null) {
+      _errorMessage = passwordError;
+      notifyListeners();
+      return false;
+    }
+
     _setLoading(true);
 
     try {
@@ -45,6 +82,7 @@ class AuthViewModel extends ChangeNotifier {
         password: password,
       );
 
+      _syncProfile(_currentUser!);
       _setLoading(false);
       _successMessage = 'Login simulasi berhasil!';
       notifyListeners();
@@ -66,6 +104,27 @@ class AuthViewModel extends ChangeNotifier {
     required String email,
     required String password,
   }) async {
+    final usernameError = validateUsername(username);
+    if (usernameError != null) {
+      _errorMessage = usernameError;
+      notifyListeners();
+      return false;
+    }
+
+    final emailError = validateEmail(email);
+    if (emailError != null) {
+      _errorMessage = emailError;
+      notifyListeners();
+      return false;
+    }
+
+    final passwordError = validatePassword(password);
+    if (passwordError != null) {
+      _errorMessage = passwordError;
+      notifyListeners();
+      return false;
+    }
+
     _setLoading(true);
 
     try {
@@ -75,6 +134,7 @@ class AuthViewModel extends ChangeNotifier {
         password: password,
       );
 
+      _syncProfile(_currentUser!, name: username.trim());
       _setLoading(false);
       _successMessage = 'Akun berhasil dibuat!';
       notifyListeners();
@@ -92,6 +152,13 @@ class AuthViewModel extends ChangeNotifier {
   // FORGOT PASSWORD
 
   Future<bool> sendResetLink(String email) async {
+    final emailError = validateEmail(email);
+    if (emailError != null) {
+      _errorMessage = emailError;
+      notifyListeners();
+      return false;
+    }
+
     _setLoading(true);
 
     try {
@@ -122,11 +189,25 @@ class AuthViewModel extends ChangeNotifier {
     required String email,
     required String newPassword,
   }) async {
+    final emailError = validateEmail(email);
+    if (emailError != null) {
+      _errorMessage = emailError;
+      notifyListeners();
+      return false;
+    }
+
+    if (!isPasswordStrong(newPassword)) {
+      _errorMessage =
+          'Password minimal 8 karakter dan mengandung huruf serta angka.';
+      notifyListeners();
+      return false;
+    }
+
     _setLoading(true);
 
     try {
       final result = await repository.resetPassword(
-        email: email,
+        email: email.trim(),
         newPassword: newPassword,
       );
 
@@ -170,5 +251,23 @@ class AuthViewModel extends ChangeNotifier {
     _errorMessage = null;
     _successMessage = null;
     notifyListeners();
+  }
+
+  /// Menyambungkan akun yang berhasil login ke data profil yang ditampilkan.
+  /// Tanpa penyimpanan baru: cukup memakai singleton ProfileRepository.
+  void _syncProfile(AuthUser user, {String? name}) {
+    final localPart = user.email.split('@').first;
+    final derivedName = localPart.isEmpty
+        ? 'Pelanggan Wong Kito'
+        : localPart[0].toUpperCase() + localPart.substring(1);
+
+    ProfileRepository.instance.updateProfile(
+      Profile(
+        name: name ?? derivedName,
+        description: 'Kelola informasi akun Anda',
+        username: user.username,
+        email: user.email,
+      ),
+    );
   }
 }

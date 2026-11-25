@@ -26,6 +26,38 @@ class MenuRepository {
       category: 'Makanan',
       image: 'assets/images/ayam_geprek.png',
     ),
+    const Menu(
+      name: 'Kopi Aren',
+      description: 'Kopi espresso dengan gula aren khas warkop',
+      price: 18000,
+      note: 'Manis alami',
+      category: 'Kopi',
+      image: 'assets/images/kopi_aren.png',
+    ),
+    const Menu(
+      name: 'Kopi Latte',
+      description: 'Espresso lembut dengan busa susu',
+      price: 20000,
+      note: 'Bisa dingin / panas',
+      category: 'Kopi',
+      image: 'assets/images/kopi_latte.png',
+    ),
+    const Menu(
+      name: 'Ayam Geprek Sambal Matah',
+      description: 'Ayam geprek renyah dengan sambal matah warkop',
+      price: 25000,
+      note: 'Sambal terpisah',
+      category: 'Makanan',
+      image: 'assets/images/ayam_geprek.png',
+    ),
+    const Menu(
+      name: 'Milkshake Cokelat',
+      description: 'Minuman susu cokelat creamy',
+      price: 17000,
+      note: 'Disajikan dingin',
+      category: 'Non-Kopi',
+      image: 'assets/images/matcha_latte.png',
+    ),
   ];
 
   List<Menu> getMenus() {
@@ -33,6 +65,6 @@ class MenuRepository {
   }
 
   List<String> getCategories() {
-    return ['Semua (24)', 'Kopi', 'Non-Kopi', 'Makanan'];
+    return ['Semua', 'Kopi', 'Non-Kopi', 'Makanan'];
   }
 }

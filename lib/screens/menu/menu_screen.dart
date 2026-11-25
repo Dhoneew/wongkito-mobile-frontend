@@ -4,10 +4,18 @@ import 'package:flutter/material.dart';
 
 import '../../features/menu/repositories/menu_repository.dart';
 import '../../features/menu/viewmodels/menu_viewmodel.dart';
+import '../../theme/wkm_style.dart';
+import '../orders/cart_screen.dart';
+import '../../widgets/cart_icon.dart';
+import '../../widgets/wkm_skeleton.dart';
 import 'menu_detail_screen.dart';
 
 class MenuScreen extends StatefulWidget {
-  const MenuScreen({super.key});
+  /// Saat dipakai sebagai tab utama, tombol back disembunyikan agar tidak
+  /// mengarah ke Dashboard secara tidak terduga.
+  final bool showBackButton;
+
+  const MenuScreen({super.key, this.showBackButton = true});
 
   @override
   State<MenuScreen> createState() => _MenuScreenState();
@@ -16,9 +24,9 @@ class MenuScreen extends StatefulWidget {
 class _MenuScreenState extends State<MenuScreen> {
   late final MenuViewModel viewModel;
 
-  static const Color backgroundColor = Color(0xFFFAF9F9);
-  static const Color textColor = Color(0xFF1A1C1C);
-  static const Color orange = Color(0xFFF57C00);
+  static const Color backgroundColor = WkmColors.background;
+  static const Color textColor = WkmColors.dark;
+  static const Color orange = WkmColors.orange;
 
 
   @override
@@ -41,28 +49,37 @@ class _MenuScreenState extends State<MenuScreen> {
     super.dispose();
   }
 
-  String formatRupiah(int price) {
-    return 'Rp${price.toString().replaceAllMapped(
-          RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
-          (match) => '${match[1]}.',
-        )}';
+  Future<void> _handleRetry() async {
+    await viewModel.retryMenu();
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Row(
+          children: [
+            Icon(Icons.check_circle, color: orange, size: 17),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Katalog menu sudah diperbarui.',
+                style: TextStyle(fontFamily: 'Inter', fontSize: 12),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: WkmColors.dark,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
-  Future<void> _handleRetry() async {
-  await viewModel.retryMenu();
-
-  if (!mounted) return;
-
-  ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(
-      content: Text('Menu berhasil dimuat!'),
-      backgroundColor: Color(0xFF2E7D32),
-      duration: Duration(seconds: 2),
-    ),
-  );
-}
-
-  void _checkConnection() {
+  /// Menu WKM adalah katalog demo lokal, jadi tidak ada pengecekan jaringan
+  /// palsu. Sheet ini hanya memberi informasi dan aksi muat ulang nyata.
+  void _showMenuInfo() {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
@@ -80,21 +97,21 @@ class _MenuScreenState extends State<MenuScreen> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.grey[300],
+                    color: WkmColors.border,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
                 const SizedBox(height: 18),
                 const Row(
                   children: [
-                    Icon(Icons.wifi, color: orange, size: 24),
+                    Icon(Icons.menu_book, color: orange, size: 24),
                     SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Status Koneksi Internet',
+                            'Katalog Menu Demo',
                             style: TextStyle(
                               fontFamily: 'Poppins',
                               fontWeight: FontWeight.bold,
@@ -104,11 +121,11 @@ class _MenuScreenState extends State<MenuScreen> {
                           ),
                           SizedBox(height: 2),
                           Text(
-                            'Wi-Fi / Data Seluler Terhubung',
+                            'Tersedia di perangkat',
                             style: TextStyle(
                               fontFamily: 'Inter',
                               fontSize: 12,
-                              color: Color(0xFF4CAF50),
+                              color: WkmColors.success,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -119,11 +136,13 @@ class _MenuScreenState extends State<MenuScreen> {
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  'Perangkat Anda terhubung ke internet. Jika menu belum tampil, server mungkin sedang sibuk.',
+                  'Menu WKM disimpan di aplikasi sehingga tidak memerlukan '
+                  'koneksi internet pada demo ini. Bila tampilan perlu '
+                  'disegarkan, gunakan tombol di bawah.',
                   style: TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 13,
-                    color: Color(0xFF666666),
+                    color: WkmColors.muted,
                     height: 1.4,
                   ),
                 ),
@@ -145,7 +164,7 @@ class _MenuScreenState extends State<MenuScreen> {
                       elevation: 0,
                     ),
                     child: const Text(
-                      'Muat Ulang Sekarang',
+                      'Muat Ulang Menu',
                       style: TextStyle(
                         fontFamily: 'Inter',
                         fontWeight: FontWeight.bold,
@@ -175,7 +194,9 @@ class _MenuScreenState extends State<MenuScreen> {
             Expanded(
               child: viewModel.isError
                   ? _buildEmptyErrorState()
-                  : _buildLoadedMenu(filteredProducts),
+                  : viewModel.isLoading
+                      ? const WkmMenuListSkeleton()
+                      : _buildLoadedMenu(filteredProducts),
             ),
           ],
         ),
@@ -188,19 +209,10 @@ class _MenuScreenState extends State<MenuScreen> {
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: Row(
         children: [
-          GestureDetector(
-            onTap: () {
-              if (Navigator.canPop(context)) {
-                Navigator.pop(context);
-              }
-            },
-            child: const Icon(
-              Icons.arrow_back_ios_new,
-              size: 18,
-              color: textColor,
-            ),
-          ),
-          const SizedBox(width: 12),
+          if (widget.showBackButton) ...[
+            wkmBackButton(() => Navigator.of(context).maybePop()),
+            const SizedBox(width: 4),
+          ],
           const Expanded(
             child: Text(
               'Menu Warkop',
@@ -212,16 +224,20 @@ class _MenuScreenState extends State<MenuScreen> {
               ),
             ),
           ),
-          // Subtle toggle button to switch between empty state and loaded state for testing
           IconButton(
-            tooltip: viewModel.isError ? 'Tampilkan Menu' : 'Simulasi Menu Kosong',
-            icon: Icon(
-              viewModel.isError ? Icons.refresh : Icons.cloud_off_outlined,
-              size: 20,
-              color: viewModel.isError ? orange : const Color(0xFF888888),
-            ),
+            tooltip: 'Info Menu',
+            onPressed: _showMenuInfo,
+            icon: const Icon(Icons.info_outline, size: 22, color: textColor),
+          ),
+          WkmCartIcon(
+            icon: Icons.shopping_cart_outlined,
+            size: 22,
+            color: WkmColors.dark,
             onPressed: () {
-              viewModel.toggleMenuState();
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const CartScreen()),
+              );
             },
           ),
         ],
@@ -267,7 +283,7 @@ class _MenuScreenState extends State<MenuScreen> {
               style: TextStyle(
                 fontFamily: 'Inter',
                 fontSize: 12,
-                color: Color(0xFF757575),
+                color: WkmColors.muted,
                 height: 1.45,
               ),
             ),
@@ -278,20 +294,11 @@ class _MenuScreenState extends State<MenuScreen> {
               height: 40,
               child: ElevatedButton.icon(
                 onPressed: viewModel.isLoading ? null : _handleRetry,
-                icon: viewModel.isLoading
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(
-                        Icons.refresh,
-                        size: 18,
-                        color: Colors.white,
-                      ),
+                icon: const Icon(
+                  Icons.refresh,
+                  size: 18,
+                  color: Colors.white,
+                ),
                 label: Text(
                   viewModel.isLoading ? 'Memuat...' : 'Coba Lagi',
                   style: const TextStyle(
@@ -314,13 +321,13 @@ class _MenuScreenState extends State<MenuScreen> {
             ),
             const SizedBox(height: 12),
 
-            // Button 2: Periksa Koneksi (Text / borderless button)
+            // Button 2: Info katalog demo (bukan pengecekan jaringan palsu)
             GestureDetector(
-              onTap: _checkConnection,
+              onTap: _showMenuInfo,
               child: const Padding(
                 padding: EdgeInsets.symmetric(vertical: 4, horizontal: 16),
                 child: Text(
-                  'Periksa Koneksi',
+                  'Info Menu',
                   style: TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 12,
@@ -393,17 +400,18 @@ class _MenuScreenState extends State<MenuScreen> {
     return Column(
       children: [
         // Category Chips (No searchbar!)
-        Container(
-          height: 36,
-          margin: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+        SizedBox(
+          height: 44,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
             itemCount: viewModel.categories.length,
             separatorBuilder: (_, _) => const SizedBox(width: 8),
             itemBuilder: (context, index) {
               final selected = viewModel.selectedCategory == index;
 
               return GestureDetector(
+                behavior: HitTestBehavior.opaque,
                 onTap: () {
                   viewModel.selectCategory(index);
                 },
@@ -411,11 +419,12 @@ class _MenuScreenState extends State<MenuScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: selected ? orange : const Color(0xFFEAEAEA),
-                    borderRadius: BorderRadius.circular(20),
+                    color: selected ? orange : WkmColors.border,
+                    borderRadius: BorderRadius.circular(22),
                   ),
                   child: Text(
-                    viewModel.categories[index],
+                    '${viewModel.categories[index]} '
+                    '(${viewModel.countForCategory(index)})',
                     style: TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 11,
@@ -432,13 +441,54 @@ class _MenuScreenState extends State<MenuScreen> {
         // Product List
         Expanded(
           child: filteredProducts.isEmpty
-              ? const Center(
-                  child: Text(
-                    'Tidak ada produk di kategori ini',
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 13,
-                      color: Color(0xFF888888),
+              ? Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.restaurant_menu_outlined,
+                          size: 40,
+                          color: orange,
+                        ),
+                        const SizedBox(height: 10),
+                        const Text(
+                          'Belum ada menu di kategori ini',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: textColor,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Coba lihat semua menu yang tersedia.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 11,
+                            color: WkmColors.muted,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          height: 42,
+                          child: OutlinedButton(
+                            onPressed: () => viewModel.selectCategory(0),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: orange,
+                              side: const BorderSide(color: orange),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            child: const Text('Lihat Semua Menu'),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 )
@@ -454,20 +504,23 @@ class _MenuScreenState extends State<MenuScreen> {
     );
   }
 
+  void _openDetail(Menu product) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MenuDetailScreen(
+          menuName: product.name,
+          menuPrice: wkmRupiah(product.price),
+          menuImage: product.image,
+          menuDescription: product.description,
+        ),
+      ),
+    );
+  }
+
   Widget _buildProductCard(Menu product) {
     return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => MenuDetailScreen(
-              menuName: product.name,
-              menuPrice: formatRupiah(product.price),
-              menuImage: product.image,
-            ),
-          ),
-        );
-      },
+      onTap: () => _openDetail(product),
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(10),
@@ -475,7 +528,7 @@ class _MenuScreenState extends State<MenuScreen> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: const Color(0xFFE8E8E8),
+            color: WkmColors.border,
           ),
           boxShadow: const [
             BoxShadow(
@@ -534,16 +587,16 @@ class _MenuScreenState extends State<MenuScreen> {
                               vertical: 3,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFE8F5E9),
+                              color: WkmColors.successSoft,
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: const Text(
                               'Tersedia',
                               style: TextStyle(
                                 fontFamily: 'Inter',
-                                fontSize: 8,
+                                fontSize: 11,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF2E7D32),
+                                color: WkmColors.success,
                               ),
                             ),
                           ),
@@ -554,14 +607,14 @@ class _MenuScreenState extends State<MenuScreen> {
                         product.description,
                         style: const TextStyle(
                           fontFamily: 'Inter',
-                          fontSize: 10,
+                          fontSize: 11,
                           height: 1.4,
-                          color: Color(0xFF666666),
+                          color: WkmColors.muted,
                         ),
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        formatRupiah(product.price),
+                        wkmRupiah(product.price),
                         style: const TextStyle(
                           fontFamily: 'Poppins',
                           fontSize: 14,
@@ -582,24 +635,15 @@ class _MenuScreenState extends State<MenuScreen> {
                     product.note,
                     style: const TextStyle(
                       fontFamily: 'Inter',
-                      fontSize: 10,
-                      color: Color(0xFF888888),
+                      fontSize: 11,
+                      color: WkmColors.muted,
                     ),
                   ),
                 ),
                 SizedBox(
                   height: 32,
                   child: ElevatedButton(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            '${product.name} ditambahkan ke pesanan',
-                          ),
-                          duration: const Duration(seconds: 2),
-                        ),
-                      );
-                    },
+                    onPressed: () => _openDetail(product),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: orange,
                       foregroundColor: Colors.white,
@@ -690,7 +734,7 @@ class _MenuEmptyIllustrationPainter extends CustomPainter {
 
     // Diagonal slash or disconnected cross
     final slashPaint = Paint()
-      ..color = const Color(0xFFD32F2F)
+      ..color = WkmColors.danger
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.0
       ..strokeCap = StrokeCap.round;
@@ -730,7 +774,7 @@ class _MenuEmptyIllustrationPainter extends CustomPainter {
 
     // Straw
     final strawPaint = Paint()
-      ..color = const Color(0xFFFF6200)
+      ..color = WkmColors.orange
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3
       ..strokeCap = StrokeCap.round;
@@ -786,7 +830,7 @@ class _MenuEmptyIllustrationPainter extends CustomPainter {
 
   void _drawBag(Canvas canvas, Size size) {
     final bagPaint = Paint()
-      ..color = const Color(0xFFFF6200)
+      ..color = WkmColors.orange
       ..style = PaintingStyle.fill;
 
     final bagShadow = Paint()

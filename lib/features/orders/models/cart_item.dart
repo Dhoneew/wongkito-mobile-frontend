@@ -1,3 +1,4 @@
+
 class CartItem {
   final String menuName;
   final String menuImage;
@@ -5,7 +6,9 @@ class CartItem {
   final String sugarLevel;
   final bool extraShot;
   final String temperature;
+
   int quantity;
+  String note;
 
   CartItem({
     required this.menuName,
@@ -15,6 +18,7 @@ class CartItem {
     required this.extraShot,
     required this.temperature,
     required this.quantity,
+    this.note = '',
   });
 
   int get subtotal => quantity * (price + (extraShot ? 5000 : 0));

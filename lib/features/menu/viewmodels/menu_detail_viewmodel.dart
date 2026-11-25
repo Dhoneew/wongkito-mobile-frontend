@@ -11,7 +11,12 @@ class MenuDetailViewModel extends ChangeNotifier {
   int _quantity = 0;
   final int basePrice;
 
-  MenuDetailViewModel({required this.basePrice});
+  MenuDetailViewModel({
+    required this.basePrice,
+    String? orderType,
+    String? tableNumber,
+  })  : _orderType = orderType ?? 'Dine-in (Makan di Tempat)',
+        _tableNumber = tableNumber ?? 'Meja 05';
 
   String? get sugarLevel => _sugarLevel;
   bool? get extraShot => _extraShot;

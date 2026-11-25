@@ -1,18 +1,25 @@
-import '../../features/auth/repositories/auth_repository.dart';
-import '../../features/auth/viewmodels/auth_viewmodel.dart';
-import '../help/help_screen.dart';
-import '../address/address_screen.dart';
-import '../../features/profile/repositories/profile_repository.dart';
-import '../../features/profile/viewmodels/profile_viewmodel.dart';
-
 import 'package:flutter/material.dart';
 
-import 'edit_profile_screen.dart';
-import '../notification/notification_screen.dart';
+import '../../features/address/viewmodels/address_viewmodel.dart';
+import '../../features/auth/repositories/auth_repository.dart';
+import '../../features/auth/viewmodels/auth_viewmodel.dart';
+import '../../features/notification/viewmodels/notification_viewmodel.dart';
+import '../../features/profile/repositories/profile_repository.dart';
+import '../../features/profile/viewmodels/profile_viewmodel.dart';
+import '../../theme/wkm_style.dart';
+import '../address/address_screen.dart';
+import '../help/help_screen.dart';
 import '../login/login_page.dart';
+import '../../main.dart';
+import '../notification/notification_screen.dart';
+import 'edit_profile_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  /// Diteruskan ke NotificationScreen supaya tap notifikasi mengganti tab
+  /// dalam MainNavigation yang sama, bukan membuat navigasi baru.
+  final ValueChanged<int>? onNavigateTab;
+
+  const ProfileScreen({super.key, this.onNavigateTab});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -20,78 +27,89 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   late final AuthViewModel authViewModel;
-
   late final ProfileViewModel viewModel;
 
   @override
   void initState() {
     super.initState();
     viewModel = ProfileViewModel(ProfileRepository.instance);
+    viewModel.addListener(_onProfileChanged);
     viewModel.loadProfile();
     authViewModel = AuthViewModel(AuthRepository());
   }
 
+  void _onProfileChanged() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
+    viewModel.removeListener(_onProfileChanged);
     viewModel.dispose();
     authViewModel.dispose();
     super.dispose();
   }
 
-  static const Color orange = Color(0xFFFF6200);
-  static const Color backgroundColor = Color(0xFFFAF9F9);
-  static const Color textColor = Color(0xFF1A1C1C);
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: WkmColors.background,
       appBar: AppBar(
         title: const Text(
           'Profil Saya',
           style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold),
         ),
-        backgroundColor: backgroundColor,
-        foregroundColor: textColor,
+        backgroundColor: WkmColors.background,
+        foregroundColor: WkmColors.dark,
         elevation: 0,
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           const SizedBox(height: 12),
-          const CircleAvatar(
+          CircleAvatar(
             radius: 42,
-            backgroundColor: Color(0xFFFFE2C7),
-            child: Icon(Icons.person, size: 45, color: orange),
+            backgroundColor: WkmColors.softOrange,
+            child: Icon(Icons.person, size: 45, color: WkmColors.orange),
           ),
           const SizedBox(height: 12),
           Text(
             viewModel.profile?.name ?? 'Memuat profil...',
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: const TextStyle(
               fontFamily: 'Poppins',
               fontSize: 17,
               fontWeight: FontWeight.bold,
-              color: textColor,
+              color: WkmColors.dark,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             viewModel.profile?.description ?? '',
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: const TextStyle(
               fontFamily: 'Inter',
               fontSize: 12,
-              color: textColor,
+              color: WkmColors.muted,
             ),
           ),
+          const SizedBox(height: 8),
+          if ((viewModel.profile?.email ?? '').isNotEmpty)
+            Text(
+              viewModel.profile!.email,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 11,
+                color: WkmColors.muted,
+              ),
+            ),
           const SizedBox(height: 24),
 
           ...viewModel.menus.map((menu) {
             return _buildItem(
-              context,
-              _getMenuIcon(menu.action),
-              menu.title,
+              icon: _getMenuIcon(menu.action),
+              title: menu.title,
               onTap: () => _handleMenuAction(context, menu.action),
             );
           }),
@@ -124,20 +142,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
       case 'edit_profile':
         await Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => const EditProfileScreen()),
+          MaterialPageRoute(builder: (_) => const EditProfileScreen()),
         );
 
         if (mounted) {
-          setState(() {
-            viewModel.loadProfile();
-          });
+          viewModel.loadProfile();
         }
         break;
 
       case 'notification':
-        Navigator.push(
+        await Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => const NotificationScreen()),
+          MaterialPageRoute(
+            builder: (_) => NotificationScreen(
+              onNavigateTab: widget.onNavigateTab,
+            ),
+          ),
         );
         break;
 
@@ -148,19 +168,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
       case 'address':
         await Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => const AddressScreen()),
+          MaterialPageRoute(builder: (_) => const AddressScreen()),
         );
         break;
 
       case 'order_history':
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const MainNavigation(initialIndex: 2),
+          ),
+          (route) => false,
+        );
         break;
 
       case 'help':
         await Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => const HelpScreen()),
+          MaterialPageRoute(builder: (_) => const HelpScreen()),
         );
         break;
+
+      default:
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Menu ini belum tersedia pada versi demo.'),
+          ),
+        );
     }
   }
 
@@ -185,11 +219,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               onPressed: () {
                 Navigator.pop(dialogContext, false);
               },
-              child: const Text('Batal', style: TextStyle(color: Colors.grey)),
+              child: const Text(
+                'Batal',
+                style: TextStyle(color: WkmColors.muted),
+              ),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: orange,
+                backgroundColor: WkmColors.orange,
                 foregroundColor: Colors.white,
               ),
               onPressed: () {
@@ -204,39 +241,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     if (shouldLogout == true && context.mounted) {
       authViewModel.logout();
+      // Bersihkan data demo supaya akun berikutnya tidak mewarisi profil,
+      // alamat, atau status baca notifikasi dari akun sebelumnya.
+      ProfileRepository.instance.reset();
+      AddressViewModel.shared.reset();
+      NotificationViewModel.shared.reset();
 
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => const LoginPage()),
+        MaterialPageRoute(builder: (_) => const LoginPage()),
         (route) => false,
       );
     }
   }
 
-  static Widget _buildItem(
-    BuildContext context,
-    IconData icon,
-    String title, {
+  static Widget _buildItem({
+    required IconData icon,
+    required String title,
     VoidCallback? onTap,
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFEAEAEA)),
-      ),
-      child: ListTile(
-        leading: Icon(icon, color: orange),
-        title: Text(
-          title,
-          style: const TextStyle(
-            fontFamily: 'Inter',
-            fontSize: 13,
-            color: textColor,
+      decoration: wkmCardDecoration(radius: 8),
+      // Material transparan menjaga ripple ListTile tetap terlihat di atas
+      // dekorasi kartu.
+      child: Material(
+        color: Colors.transparent,
+        child: ListTile(
+          leading: Icon(icon, color: WkmColors.orange),
+          title: Text(
+            title,
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 13,
+              color: WkmColors.dark,
+            ),
           ),
+          trailing: const Icon(Icons.chevron_right, color: WkmColors.muted),
+          onTap: onTap,
+          minLeadingWidth: 32,
         ),
-        trailing: const Icon(Icons.chevron_right, color: Color(0xFF888888)),
-        onTap: onTap ?? () {},
       ),
     );
   }

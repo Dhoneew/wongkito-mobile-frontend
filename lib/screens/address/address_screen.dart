@@ -1,8 +1,8 @@
-
 import 'package:flutter/material.dart';
+
 import '../../features/address/models/address.dart';
-import '../../features/address/repositories/address_repository.dart';
 import '../../features/address/viewmodels/address_viewmodel.dart';
+import '../../theme/wkm_style.dart';
 
 class AddressScreen extends StatefulWidget {
   const AddressScreen({super.key});
@@ -12,37 +12,27 @@ class AddressScreen extends StatefulWidget {
 }
 
 class _AddressScreenState extends State<AddressScreen> {
-  static const Color orange = Color(0xFFFF6200);
-  static const Color backgroundColor = Color(0xFFFAF9F9);
-  static const Color textColor = Color(0xFF1A1C1C);
+  static final RegExp phonePattern = RegExp(r'^[0-9+\-\s]{8,}$');
 
   late final AddressViewModel viewModel;
 
   @override
   void initState() {
     super.initState();
-    viewModel = AddressViewModel(AddressRepository());
+    viewModel = AddressViewModel.shared;
     viewModel.loadAddresses();
-  }
-
-  @override
-  void dispose() {
-    viewModel.dispose();
-    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: WkmColors.background,
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
-        backgroundColor: backgroundColor,
-        foregroundColor: textColor,
+        backgroundColor: WkmColors.background,
+        foregroundColor: WkmColors.dark,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.chevron_left, size: 28),
-          onPressed: () => Navigator.pop(context),
-        ),
+        leading: wkmBackButton(() => Navigator.pop(context)),
         title: const Text(
           'Alamat Saya',
           style: TextStyle(
@@ -54,30 +44,51 @@ class _AddressScreenState extends State<AddressScreen> {
       ),
       body: AnimatedBuilder(
         animation: viewModel,
-        builder: (context, child) {
+        builder: (context, _) {
           final addresses = viewModel.addresses;
 
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              ...addresses.map((address) {
-                return _buildAddressItem(address);
-              }),
-              const SizedBox(height: 12),
-              OutlinedButton.icon(
-                onPressed: _showAddressForm,
-                icon: const Icon(Icons.add, color: orange),
-                label: const Text(
-                  'Tambah Alamat',
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    color: orange,
+              if (addresses.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 32),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.location_off_outlined,
+                        size: 36,
+                        color: WkmColors.orange,
+                      ),
+                      SizedBox(height: 10),
+                      Text(
+                        'Belum ada alamat tersimpan',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: WkmColors.dark,
+                        ),
+                      ),
+                      SizedBox(height: 6),
+                      Text(
+                        'Tambahkan alamat pertama Anda lewat tombol di bawah.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 12,
+                          color: WkmColors.muted,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: orange),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                ),
+              ...addresses.map(_buildAddressItem),
+              const SizedBox(height: 12),
+              wkmOutlineButton(
+                label: 'Tambah Alamat',
+                onPressed: () => _showAddressForm(),
               ),
             ],
           );
@@ -90,11 +101,9 @@ class _AddressScreenState extends State<AddressScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+      decoration: wkmCardDecoration(radius: 12).copyWith(
         border: Border.all(
-          color: address.isPrimary ? orange : const Color(0xFFEAEAEA),
+          color: address.isPrimary ? WkmColors.orange : WkmColors.border,
         ),
       ),
       child: Column(
@@ -102,10 +111,7 @@ class _AddressScreenState extends State<AddressScreen> {
         children: [
           Row(
             children: [
-              const Icon(
-                Icons.location_on_outlined,
-                color: orange,
-              ),
+              const Icon(Icons.location_on_outlined, color: WkmColors.orange),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -113,7 +119,8 @@ class _AddressScreenState extends State<AddressScreen> {
                   style: const TextStyle(
                     fontFamily: 'Poppins',
                     fontWeight: FontWeight.bold,
-                    color: textColor,
+                    fontSize: 13,
+                    color: WkmColors.dark,
                   ),
                 ),
               ),
@@ -123,7 +130,7 @@ class _AddressScreenState extends State<AddressScreen> {
                   style: TextStyle(
                     fontFamily: 'Inter',
                     fontSize: 11,
-                    color: orange,
+                    color: WkmColors.orange,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -134,7 +141,9 @@ class _AddressScreenState extends State<AddressScreen> {
             address.recipientName,
             style: const TextStyle(
               fontFamily: 'Poppins',
+              fontSize: 12,
               fontWeight: FontWeight.w600,
+              color: WkmColors.dark,
             ),
           ),
           Text(
@@ -142,7 +151,7 @@ class _AddressScreenState extends State<AddressScreen> {
             style: const TextStyle(
               fontFamily: 'Inter',
               fontSize: 12,
-              color: Color(0xFF888888),
+              color: WkmColors.muted,
             ),
           ),
           const SizedBox(height: 8),
@@ -151,28 +160,30 @@ class _AddressScreenState extends State<AddressScreen> {
             style: const TextStyle(
               fontFamily: 'Inter',
               fontSize: 12,
-              color: textColor,
+              color: WkmColors.dark,
             ),
           ),
           const Divider(height: 24),
           Wrap(
-            spacing: 8,
+            spacing: 4,
             children: [
               TextButton(
                 onPressed: () => _showAddressForm(address: address),
                 child: const Text('Edit'),
               ),
+              if (!address.isPrimary)
+                TextButton(
+                  onPressed: () {
+                    viewModel.setPrimaryAddress(address.id);
+                    _showMessage('Alamat utama berhasil diperbarui.');
+                  },
+                  child: const Text('Jadikan Utama'),
+                ),
               TextButton(
-                onPressed: () {
-                  viewModel.setPrimaryAddress(address.id);
-                },
-                child: const Text('Jadikan Utama'),
-              ),
-              TextButton(
-                onPressed: () => viewModel.deleteAddress(address.id),
+                onPressed: () => _confirmDelete(address),
                 child: const Text(
                   'Hapus',
-                  style: TextStyle(color: Colors.red),
+                  style: TextStyle(color: WkmColors.danger),
                 ),
               ),
             ],
@@ -182,7 +193,59 @@ class _AddressScreenState extends State<AddressScreen> {
     );
   }
 
+  void _showMessage(String message, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? WkmColors.danger : WkmColors.success,
+      ),
+    );
+  }
+
+  Future<void> _confirmDelete(Address address) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text(
+            'Hapus Alamat?',
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Text(
+            address.isPrimary
+                ? 'Alamat "${address.label}" adalah alamat utama. Jika dihapus, '
+                    'tidak ada alamat yang ditandai sebagai utama.'
+                : 'Alamat "${address.label}" akan dihapus dari daftar Anda.',
+            style: const TextStyle(fontFamily: 'Inter', fontSize: 13),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Batal'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text(
+                'Hapus',
+                style: TextStyle(color: WkmColors.danger),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) return;
+
+    viewModel.deleteAddress(address.id);
+    _showMessage('Alamat berhasil dihapus.');
+  }
+
   void _showAddressForm({Address? address}) {
+    final formKey = GlobalKey<FormState>();
     final nameController = TextEditingController(
       text: address?.recipientName ?? '',
     );
@@ -192,70 +255,122 @@ class _AddressScreenState extends State<AddressScreen> {
     final addressController = TextEditingController(
       text: address?.fullAddress ?? '',
     );
-    final labelController = TextEditingController(
-      text: address?.label ?? '',
-    );
+    final labelController = TextEditingController(text: address?.label ?? '');
 
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (dialogContext) {
-        return AlertDialog(
-          title: Text(address == null ? 'Tambah Alamat' : 'Edit Alamat'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildTextField(nameController, 'Nama Penerima'),
-                _buildTextField(phoneController, 'Nomor Telepon'),
-                _buildTextField(addressController, 'Alamat Lengkap'),
-                _buildTextField(labelController, 'Label (Rumah/Kantor)'),
-              ],
-            ),
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(dialogContext).viewInsets.bottom,
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Batal'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: orange,
-                foregroundColor: Colors.white,
+          child: AlertDialog(
+            title: Text(
+              address == null ? 'Tambah Alamat' : 'Edit Alamat',
+              style: const TextStyle(
+                fontFamily: 'Poppins',
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
               ),
-              onPressed: () {
-                if (nameController.text.trim().isEmpty ||
-                    phoneController.text.trim().isEmpty ||
-                    addressController.text.trim().isEmpty ||
-                    labelController.text.trim().isEmpty) {
-                  return;
-                }
-
-                if (address == null) {
-                  viewModel.addAddress(
-                    Address(
-                      id: DateTime.now().millisecondsSinceEpoch.toString(),
-                      recipientName: nameController.text.trim(),
-                      phoneNumber: phoneController.text.trim(),
-                      fullAddress: addressController.text.trim(),
-                      label: labelController.text.trim(),
-                    ),
-                  );
-                } else {
-                  viewModel.updateAddress(
-                    address.copyWith(
-                      recipientName: nameController.text.trim(),
-                      phoneNumber: phoneController.text.trim(),
-                      fullAddress: addressController.text.trim(),
-                      label: labelController.text.trim(),
-                    ),
-                  );
-                }
-
-                Navigator.pop(dialogContext);
-              },
-              child: const Text('Simpan'),
             ),
-          ],
+            content: SingleChildScrollView(
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildTextField(
+                      controller: nameController,
+                      label: 'Nama Penerima',
+                      validator: (value) =>
+                          (value == null || value.trim().isEmpty)
+                          ? 'Nama penerima wajib diisi'
+                          : null,
+                    ),
+                    _buildTextField(
+                      controller: phoneController,
+                      label: 'Nomor Telepon',
+                      keyboardType: TextInputType.phone,
+                      validator: (value) {
+                        final phone = value?.trim() ?? '';
+                        if (phone.isEmpty) return 'Nomor telepon wajib diisi';
+                        final digitCount =
+                            phone.replaceAll(RegExp(r'[^0-9]'), '').length;
+                        if (!phonePattern.hasMatch(phone) || digitCount < 8) {
+                          return 'Nomor telepon tidak valid';
+                        }
+                        return null;
+                      },
+                    ),
+                    _buildTextField(
+                      controller: addressController,
+                      label: 'Alamat Lengkap',
+                      validator: (value) =>
+                          (value == null || value.trim().isEmpty)
+                          ? 'Alamat lengkap wajib diisi'
+                          : null,
+                    ),
+                    _buildTextField(
+                      controller: labelController,
+                      label: 'Label (Rumah/Kantor)',
+                      validator: (value) =>
+                          (value == null || value.trim().isEmpty)
+                          ? 'Label wajib diisi'
+                          : null,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Batal'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: WkmColors.orange,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: () {
+                  FocusScope.of(dialogContext).unfocus();
+
+                  // Validator inline di dialog sudah cukup; hindari SnackBar
+                  // generik yang menutupi pesan error di bawah field.
+                  if (!(formKey.currentState?.validate() ?? false)) return;
+
+                  if (address == null) {
+                    viewModel.addAddress(
+                      Address(
+                        id: DateTime.now().millisecondsSinceEpoch.toString(),
+                        recipientName: nameController.text.trim(),
+                        phoneNumber: phoneController.text.trim(),
+                        fullAddress: addressController.text.trim(),
+                        label: labelController.text.trim(),
+                      ),
+                    );
+                  } else {
+                    viewModel.updateAddress(
+                      address.copyWith(
+                        recipientName: nameController.text.trim(),
+                        phoneNumber: phoneController.text.trim(),
+                        fullAddress: addressController.text.trim(),
+                        label: labelController.text.trim(),
+                      ),
+                    );
+                  }
+
+                  Navigator.pop(dialogContext);
+                  _showMessage(
+                    address == null
+                        ? 'Alamat berhasil ditambahkan.'
+                        : 'Alamat berhasil diperbarui.',
+                  );
+                },
+                child: const Text('Simpan'),
+              ),
+            ],
+          ),
         );
       },
     ).then((_) {
@@ -266,17 +381,39 @@ class _AddressScreenState extends State<AddressScreen> {
     });
   }
 
-  Widget _buildTextField(
-    TextEditingController controller,
-    String label,
-  ) {
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required String? Function(String?) validator,
+    TextInputType keyboardType = TextInputType.text,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: TextField(
+      child: TextFormField(
         controller: controller,
+        validator: validator,
+        keyboardType: keyboardType,
+        style: const TextStyle(
+          fontFamily: 'Inter',
+          fontSize: 13,
+          color: WkmColors.dark,
+        ),
         decoration: InputDecoration(
           labelText: label,
+          labelStyle: const TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 12,
+            color: WkmColors.muted,
+          ),
+          errorStyle: const TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 11,
+            color: WkmColors.danger,
+          ),
           border: const OutlineInputBorder(),
+          focusedBorder: const OutlineInputBorder(
+            borderSide: BorderSide(color: WkmColors.orange),
+          ),
         ),
       ),
     );

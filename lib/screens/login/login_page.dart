@@ -1,6 +1,9 @@
 import '../../features/auth/repositories/auth_repository.dart';
 import '../../features/auth/viewmodels/auth_viewmodel.dart';
+
 import 'package:flutter/material.dart';
+
+import '../../theme/wkm_style.dart';
 import '../../main.dart';
 import 'forgot_password_page.dart';
 import 'register_page.dart';
@@ -12,13 +15,12 @@ class LoginPage extends StatefulWidget {
   State<LoginPage> createState() => _LoginPageState();
 }
 
-
 class _LoginPageState extends State<LoginPage> {
-  static const Color _orange = Color(0xFFF57C00);
-  static const Color _bg = Color(0xFFFAF9F9);
-  static const Color _text = Color(0xFF1A1C1C);
-  static const Color _grey = Color(0xFF8A8D8D);
-  static const Color _border = Color(0xFFD9D9D9);
+  static const Color _orange = WkmColors.orange;
+  static const Color _bg = WkmColors.background;
+  static const Color _text = WkmColors.dark;
+  static const Color _grey = WkmColors.muted;
+  static const Color _border = WkmColors.border;
 
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
@@ -66,12 +68,14 @@ class _LoginPageState extends State<LoginPage> {
     if (!mounted) return;
 
     if (!success) {
+      // Email sengaja dipertahankan agar user tidak mengetik ulang.
+      // Password disembunyikan kembali setelah error walaupun sebelumnya
+      // user menekan ikon mata.
+      setState(() => _obscurePassword = true);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            viewModel.errorMessage ?? 'Login gagal.',
-          ),
-          backgroundColor: Colors.redAccent,
+          content: Text(viewModel.errorMessage ?? 'Login gagal.'),
+          backgroundColor: WkmColors.danger,
         ),
       );
       return;
@@ -79,10 +83,8 @@ class _LoginPageState extends State<LoginPage> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          viewModel.successMessage ?? 'Login berhasil!',
-        ),
-        backgroundColor: const Color(0xFF388E3C),
+        content: Text(viewModel.successMessage ?? 'Login berhasil!'),
+        backgroundColor: WkmColors.success,
       ),
     );
 
@@ -92,12 +94,9 @@ class _LoginPageState extends State<LoginPage> {
 
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(
-        builder: (context) => const MainNavigation(),
-      ),
+      MaterialPageRoute(builder: (context) => const MainNavigation()),
     );
   }
-
 
   InputDecoration _inputDecoration({
     required String hint,
@@ -125,12 +124,9 @@ class _LoginPageState extends State<LoginPage> {
       contentPadding: const EdgeInsets.symmetric(vertical: 14),
       enabledBorder: border(_border),
       focusedBorder: border(_orange, 1.5),
-      errorBorder: border(Colors.red.shade400),
-      focusedErrorBorder: border(Colors.red.shade400, 1.5),
-      errorStyle: const TextStyle(
-        fontFamily: 'Inter',
-        fontSize: 11,
-      ),
+      errorBorder: border(WkmColors.danger),
+      focusedErrorBorder: border(WkmColors.danger, 1.5),
+      errorStyle: const TextStyle(fontFamily: 'Inter', fontSize: 11),
     );
   }
 
@@ -156,9 +152,11 @@ class _LoginPageState extends State<LoginPage> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 24,
-              vertical: 24,
+            padding: EdgeInsets.fromLTRB(
+              24,
+              24,
+              24,
+              24 + MediaQuery.viewInsetsOf(context).bottom,
             ),
             child: Form(
               key: _formKey,
@@ -215,31 +213,12 @@ class _LoginPageState extends State<LoginPage> {
                     keyboardType: TextInputType.emailAddress,
                     textInputAction: TextInputAction.next,
                     autofillHints: const [AutofillHints.email],
-                    style: const TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 13,
-                    ),
+                    style: const TextStyle(fontFamily: 'Inter', fontSize: 13),
                     decoration: _inputDecoration(
                       hint: 'nama@email.com',
                       icon: Icons.mail_outline,
                     ),
-                    validator: (value) {
-                      final email = value?.trim() ?? '';
-
-                      if (email.isEmpty) {
-                        return 'Email wajib diisi';
-                      }
-
-                      final emailRegex = RegExp(
-                        r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
-                      );
-
-                      if (!emailRegex.hasMatch(email)) {
-                        return 'Format email tidak valid';
-                      }
-
-                      return null;
-                    },
+                    validator: (value) => viewModel.validateEmail(value ?? ''),
                   ),
 
                   const SizedBox(height: 16),
@@ -253,10 +232,7 @@ class _LoginPageState extends State<LoginPage> {
                     textInputAction: TextInputAction.done,
                     autofillHints: const [AutofillHints.password],
                     onFieldSubmitted: (_) => _login(),
-                    style: const TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 13,
-                    ),
+                    style: const TextStyle(fontFamily: 'Inter', fontSize: 13),
                     decoration: _inputDecoration(
                       hint: 'Masukkan kata sandi',
                       icon: Icons.lock_outline,
@@ -275,17 +251,8 @@ class _LoginPageState extends State<LoginPage> {
                         },
                       ),
                     ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Kata sandi wajib diisi';
-                      }
-
-                      if (value.length < 6) {
-                        return 'Minimal 6 karakter';
-                      }
-
-                      return null;
-                    },
+                    validator: (value) =>
+                        viewModel.validatePassword(value ?? ''),
                   ),
 
                   Align(
@@ -314,38 +281,11 @@ class _LoginPageState extends State<LoginPage> {
                   const SizedBox(height: 8),
 
                   // TOMBOL MASUK
-                  SizedBox(
-                    height: 44,
-                    child: ElevatedButton(
-                      onPressed: viewModel.isLoading ? null : _login,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _orange,
-                        foregroundColor: _bg,
-                        disabledBackgroundColor:
-                            _orange.withValues(alpha: 0.6),
-                        disabledForegroundColor: _bg,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(7),
-                        ),
-                      ),
-                      child: viewModel.isLoading
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Text(
-                              'Masuk',
-                              style: TextStyle(
-                                fontFamily: 'Inter',
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                    ),
+                  wkmPrimaryButton(
+                    label: 'Masuk',
+                    onPressed: _login,
+                    loading: viewModel.isLoading,
+                    height: 48,
                   ),
 
                   const SizedBox(height: 20),
@@ -379,7 +319,8 @@ class _LoginPageState extends State<LoginPage> {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text(
-                              'Login Google berhasil dipilih (Simulasi)',
+                              'Login Google masih simulasi. Untuk demo, '
+                              'gunakan email dan kata sandi apa pun yang valid.',
                             ),
                           ),
                         );
@@ -426,8 +367,8 @@ class _LoginPageState extends State<LoginPage> {
                           color: _text,
                         ),
                       ),
-                      GestureDetector(
-                        onTap: () {
+                      TextButton(
+                        onPressed: () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -435,16 +376,21 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                           );
                         },
-                        child: const Padding(
-                          padding: EdgeInsets.only(left: 4),
-                          child: Text(
-                            'Daftar',
-                            style: TextStyle(
-                              fontFamily: 'Inter',
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: _orange,
-                            ),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 12,
+                          ),
+                          minimumSize: const Size(40, 44),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: const Text(
+                          'Daftar',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: _orange,
                           ),
                         ),
                       ),

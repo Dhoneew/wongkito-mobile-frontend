@@ -1,12 +1,17 @@
 
 import 'package:flutter/material.dart';
 
+import '../../data/order_store.dart';
+import '../../features/orders/models/cart_item.dart';
+import '../../theme/wkm_style.dart';
+import '../orders/cart_screen.dart';
+
 class PromoDetailScreen extends StatelessWidget {
   const PromoDetailScreen({super.key});
 
-  static const Color orange = Color(0xFFF57C00);
-  static const Color bg = Color(0xFFFAF9F9);
-  static const Color dark = Color(0xFF1A1C1C);
+  static const Color orange = WkmColors.orange;
+  static const Color bg = WkmColors.background;
+  static const Color dark = WkmColors.dark;
 
   @override
   Widget build(BuildContext context) {
@@ -124,24 +129,31 @@ class PromoDetailScreen extends StatelessWidget {
 
                             Row(
                               children: [
-                                const Text(
-                                  'Rp25.000',
-                                  style: TextStyle(
-                                    fontFamily: 'Poppins',
-                                    fontSize: 19,
-                                    fontWeight: FontWeight.bold,
-                                    color: orange,
+                                Flexible(
+                                  child: Text(
+                                    'Rp25.000',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontFamily: 'Poppins',
+                                      fontSize: 19,
+                                      fontWeight: FontWeight.bold,
+                                      color: orange,
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(width: 12),
-                                const Text(
-                                  'Rp32.000',
-                                  style: TextStyle(
-                                    fontFamily: 'Inter',
-                                    fontSize: 11,
-                                    color: Colors.grey,
-                                    decoration:
-                                        TextDecoration.lineThrough,
+                                Flexible(
+                                  child: Text(
+                                    'Rp32.000',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontFamily: 'Inter',
+                                      fontSize: 11,
+                                      color: Colors.grey,
+                                      decoration: TextDecoration.lineThrough,
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(width: 12),
@@ -199,10 +211,10 @@ class PromoDetailScreen extends StatelessWidget {
                                 SizedBox(width: 5),
                                 Expanded(
                                   child: Text(
-                                    'Promo berlaku hingga 30 September 2026',
+                                    'Promo berlaku hingga 31 Desember 2026',
                                     style: TextStyle(
                                       fontFamily: 'Inter',
-                                      fontSize: 10,
+                                      fontSize: 11,
                                       color: Colors.grey,
                                     ),
                                   ),
@@ -217,13 +229,47 @@ class PromoDetailScreen extends StatelessWidget {
                               height: 44,
                               child: ElevatedButton(
                                 onPressed: () {
+                                  // Promo mock diperlakukan sebagai satu paket
+                                  // di keranjang agar harga dan checkout tetap konsisten.
+                                  OrderStore.instance.addItem(
+                                    CartItem(
+                                      menuName: 'Paket Hemat Kenyang',
+                                      menuImage: 'assets/images/ayam_geprek.png',
+                                      price: 25000,
+                                      sugarLevel: 'Paket promo',
+                                      extraShot: false,
+                                      temperature: 'Hot (Panas)',
+                                      quantity: 1,
+                                      note: 'Es Jeruk + Ayam Geprek + Sambal Matah',
+                                    ),
+                                  );
+
+                                  // Sama seperti Detail Menu: hanya masuk cart,
+                                  // user yang memutuskan kapan membuka keranjang.
                                   ScaffoldMessenger.of(context)
                                     ..hideCurrentSnackBar()
                                     ..showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'Promo dipilih! '
-                                          'Fitur pemesanan belum terhubung.',
+                                      SnackBar(
+                                        content: const Text(
+                                          'Paket promo berhasil ditambahkan ke keranjang',
+                                        ),
+                                        backgroundColor: WkmColors.success,
+                                        behavior: SnackBarBehavior.floating,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        action: SnackBarAction(
+                                          label: 'Lihat Keranjang',
+                                          textColor: Colors.white,
+                                          onPressed: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) =>
+                                                    const CartScreen(),
+                                              ),
+                                            );
+                                          },
                                         ),
                                       ),
                                     );
@@ -270,7 +316,7 @@ class PromoDetailScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(7),
-        border: Border.all(color: const Color(0xFFE3E3E3)),
+        border: Border.all(color: WkmColors.border),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -320,7 +366,7 @@ class PromoDetailScreen extends StatelessWidget {
                   description,
                   style: const TextStyle(
                     fontFamily: 'Inter',
-                    fontSize: 10,
+                    fontSize: 11,
                     color: dark,
                   ),
                 ),

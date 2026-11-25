@@ -8,6 +8,9 @@ class AddressViewModel extends ChangeNotifier {
 
   AddressViewModel(this.repository);
 
+  /// Satu instance bersama supaya alamat tidak hilang saat halaman dibuka ulang.
+  static final AddressViewModel shared = AddressViewModel(AddressRepository());
+
   List<Address> _addresses = [];
 
   List<Address> get addresses => _addresses;
@@ -34,6 +37,11 @@ class AddressViewModel extends ChangeNotifier {
 
   void setPrimaryAddress(String id) {
     repository.setPrimaryAddress(id);
+    loadAddresses();
+  }
+
+  void reset() {
+    repository.reset();
     loadAddresses();
   }
 }

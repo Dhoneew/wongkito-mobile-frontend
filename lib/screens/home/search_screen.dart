@@ -1,31 +1,36 @@
 import 'package:flutter/material.dart';
 
+import '../../theme/wkm_style.dart';
 import '../../features/menu/models/menu.dart';
 import '../../features/search/repositories/search_repository.dart';
 import '../../features/search/viewmodels/search_viewmodel.dart';
+import '../../widgets/wkm_skeleton.dart';
 import '../menu/menu_detail_screen.dart';
 
 class SearchScreen extends StatefulWidget {
-  const SearchScreen({super.key});
+  /// Data katalog lokal sudah instan, jadi skeleton hanya dipakai bila
+  /// caller benar-benar sedang memuat data.
+  final bool isLoading;
+
+  const SearchScreen({super.key, this.isLoading = false});
 
   @override
   State<SearchScreen> createState() => _SearchScreenState();
 }
 
 class _SearchScreenState extends State<SearchScreen> {
-  static const Color orange = Color(0xFFF57C00);
-  static const Color bg = Color(0xFFFAF9F9);
-  static const Color dark = Color(0xFF1A1C1C);
-  static const Color grey = Color(0xFF888888);
-  static const Color border = Color(0xFFE5E5E5);
+  static const Color orange = WkmColors.orange;
+  static const Color bg = WkmColors.background;
+  static const Color dark = WkmColors.dark;
+  static const Color grey = WkmColors.muted;
+  static const Color border = WkmColors.border;
 
-  final TextEditingController _searchController =
-      TextEditingController(text: 'Kopi');
+  final TextEditingController _searchController = TextEditingController(
+    text: 'Kopi',
+  );
   final FocusNode _searchFocus = FocusNode();
 
   late final SearchViewModel viewModel;
-
-
 
   @override
   void initState() {
@@ -37,19 +42,12 @@ class _SearchScreenState extends State<SearchScreen> {
       offset: _searchController.text.length,
     );
   }
-  void _onViewModelChanged() {
-  if (mounted) {
-    setState(() {});
-  }
-}
 
-  String rupiah(int value) {
-  final formatted = value.toString().replaceAllMapped(
-    RegExp(r'\B(?=(\d{3})+(?!\d))'),
-    (_) => '.',
-  );
-  return 'Rp$formatted';
-}
+  void _onViewModelChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
 
   @override
   void dispose() {
@@ -62,16 +60,22 @@ class _SearchScreenState extends State<SearchScreen> {
 
   bool get _hasActiveFilter => viewModel.hasActiveFilter;
 
-List<Menu> get _filteredMenus => viewModel.filteredMenus;
+  List<Menu> get _filteredMenus => viewModel.filteredMenus;
 
-void _search(String value) {
-  _searchController.text = value;
-  _searchController.selection = TextSelection.collapsed(
-    offset: value.length,
-  );
+  void _search(String value) {
+    _searchController.text = value;
+    _searchController.selection = TextSelection.collapsed(offset: value.length);
 
-  viewModel.search(value);
-}
+    viewModel.search(value);
+  }
+
+  /// Mengosongkan query sekaligus filter tanpa berpindah halaman.
+  void _clearSearch() {
+    _searchController.clear();
+    viewModel.updateQuery('');
+    viewModel.resetFilters();
+    _searchFocus.unfocus();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -90,11 +94,7 @@ void _search(String value) {
                 children: [
                   IconButton(
                     onPressed: () => Navigator.pop(context),
-                    icon: const Icon(
-                      Icons.chevron_left,
-                      size: 28,
-                      color: dark,
-                    ),
+                    icon: const Icon(Icons.chevron_left, size: 28, color: dark),
                   ),
                   Expanded(
                     child: Container(
@@ -125,7 +125,8 @@ void _search(String value) {
                             child: TextField(
                               controller: _searchController,
                               focusNode: _searchFocus,
-                              onChanged: (value) => viewModel.updateQuery(value),
+                              onChanged: (value) =>
+                                  viewModel.updateQuery(value),
                               onSubmitted: _search,
                               style: const TextStyle(
                                 fontFamily: 'Inter',
@@ -133,7 +134,7 @@ void _search(String value) {
                                 color: dark,
                               ),
                               decoration: const InputDecoration(
-                                hintText: 'Search...',
+                                hintText: 'Cari menu...',
                                 hintStyle: TextStyle(
                                   fontFamily: 'Inter',
                                   fontSize: 12,
@@ -145,39 +146,66 @@ void _search(String value) {
                               ),
                             ),
                           ),
-                          // Tombol Filter
-                          GestureDetector(
-                            onTap: _showFilterModal,
-                            child: Stack(
-                              clipBehavior: Clip.none,
-                              children: [
-                                Container(
-                                  width: 22,
-                                  height: 22,
-                                  decoration: BoxDecoration(
-                                    color: orange,
-                                    borderRadius: BorderRadius.circular(5),
-                                  ),
-                                  child: const Icon(
-                                    Icons.tune,
-                                    color: Colors.white,
-                                    size: 14,
-                                  ),
-                                ),
-                                if (_hasActiveFilter)
-                                  Positioned(
-                                    right: -2,
-                                    top: -2,
-                                    child: Container(
-                                      width: 8,
-                                      height: 8,
-                                      decoration: const BoxDecoration(
-                                        color: Colors.redAccent,
-                                        shape: BoxShape.circle,
+                          // Tombol Filter: tetap tampil sama, dengan area sentuh
+                          // yang lebih besar agar mudah ditekan.
+                          Tooltip(
+                            message: 'Filter pencarian',
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: _showFilterModal,
+                              child: Padding(
+                                padding: const EdgeInsets.all(8),
+                                child: Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    Container(
+                                      width: 22,
+                                      height: 22,
+                                      decoration: BoxDecoration(
+                                        color: orange,
+                                        borderRadius: BorderRadius.circular(5),
+                                      ),
+                                      child: const Icon(
+                                        Icons.tune,
+                                        color: Colors.white,
+                                        size: 14,
                                       ),
                                     ),
-                                  ),
-                              ],
+                                    if (_hasActiveFilter)
+                                      Positioned(
+                                        right: -6,
+                                        top: -6,
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 5,
+                                            vertical: 1,
+                                          ),
+                                          constraints: const BoxConstraints(
+                                            minWidth: 16,
+                                            minHeight: 16,
+                                          ),
+                                          decoration: const BoxDecoration(
+                                            color: WkmColors.dark,
+                                            shape: BoxShape.rectangle,
+                                            borderRadius: BorderRadius.all(
+                                              Radius.circular(8),
+                                            ),
+                                          ),
+                                          alignment: Alignment.center,
+                                          child: Text(
+                                            '${viewModel.activeFilterCount}',
+                                            style: const TextStyle(
+                                              fontFamily: 'Inter',
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
                             ),
                           ),
                         ],
@@ -190,33 +218,53 @@ void _search(String value) {
 
             // KONTEN HASIL & PENCARIAN TERAKHIR
             Expanded(
-              child: ListView(
+              child: widget.isLoading
+                  ? const WkmSearchResultSkeleton()
+                  : ListView(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Hasil Pencarian',
-                        style: TextStyle(
-                          fontFamily: 'Poppins',
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: dark,
-                        ),
-                      ),
-                      if (_hasActiveFilter)
-                        GestureDetector(
-                          onTap: () {
-                            viewModel.resetFilters();
-                          },
-                          child: const Text(
-                            'Reset Filter',
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Hasil Pencarian',
                             style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: dark,
+                            ),
+                          ),
+                          Text(
+                            '${results.length} menu',
+                            style: const TextStyle(
                               fontFamily: 'Inter',
                               fontSize: 11,
-                              color: orange,
-                              fontWeight: FontWeight.bold,
+                              color: grey,
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (_hasActiveFilter)
+                        InkWell(
+                          onTap: viewModel.resetFilters,
+                          borderRadius: BorderRadius.circular(8),
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 12,
+                            ),
+                            child: Text(
+                              'Reset Filter',
+                              style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 11,
+                                color: orange,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ),
@@ -226,17 +274,13 @@ void _search(String value) {
 
                   if (results.isEmpty)
                     Container(
-                      padding: const EdgeInsets.symmetric(vertical: 32),
+                      padding: const EdgeInsets.symmetric(vertical: 28),
                       alignment: Alignment.center,
-                      child: const Column(
+                      child: Column(
                         children: [
-                          Icon(
-                            Icons.search_off,
-                            size: 44,
-                            color: grey,
-                          ),
-                          SizedBox(height: 8),
-                          Text(
+                          const Icon(Icons.search_off, size: 44, color: grey),
+                          const SizedBox(height: 8),
+                          const Text(
                             'Menu tidak ditemukan',
                             style: TextStyle(
                               fontFamily: 'Inter',
@@ -245,13 +289,30 @@ void _search(String value) {
                               color: dark,
                             ),
                           ),
-                          SizedBox(height: 4),
-                          Text(
-                            'Coba kata kunci atau ubah filter pencarian.',
+                          const SizedBox(height: 4),
+                          const Text(
+                            'Coba kata kunci lain atau lihat semua menu.',
                             style: TextStyle(
                               fontFamily: 'Inter',
                               fontSize: 11,
                               color: grey,
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          OutlinedButton.icon(
+                            onPressed: _clearSearch,
+                            icon: const Icon(Icons.restore, size: 16),
+                            label: const Text('Lihat Semua Menu'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: orange,
+                              side: const BorderSide(color: orange),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(18),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
                             ),
                           ),
                         ],
@@ -287,17 +348,13 @@ void _search(String value) {
                             vertical: 7,
                           ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFEAEAEA),
+                            color: WkmColors.border,
                             borderRadius: BorderRadius.circular(18),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(
-                                Icons.search,
-                                size: 14,
-                                color: dark,
-                              ),
+                              const Icon(Icons.search, size: 14, color: dark),
                               const SizedBox(width: 5),
                               Text(
                                 term,
@@ -332,8 +389,9 @@ void _search(String value) {
           MaterialPageRoute(
             builder: (_) => MenuDetailScreen(
               menuName: menu.name,
-              menuPrice: rupiah(menu.price),
+              menuPrice: wkmRupiah(menu.price),
               menuImage: menu.image,
+              menuDescription: menu.description,
             ),
           ),
         );
@@ -388,7 +446,7 @@ void _search(String value) {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    rupiah(menu.price),
+                    wkmRupiah(menu.price),
                     style: const TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 11,
@@ -404,10 +462,11 @@ void _search(String value) {
     );
   }
 
-  static const Color secondaryTextColor = Color(0xFF666666);
+  static const Color secondaryTextColor = WkmColors.muted;
 
   // MODAL FILTER PENCARIAN
   void _showFilterModal() {
+    // Nilai sementara: perubahan baru masuk ke ViewModel saat "Terapkan".
     String tempCategory = viewModel.selectedCategory;
     String tempSort = viewModel.selectedSort;
     String tempPrice = viewModel.selectedPriceRange;
@@ -420,241 +479,259 @@ void _search(String value) {
         return StatefulBuilder(
           builder: (context, setModalState) {
             return Container(
-              padding: const EdgeInsets.fromLTRB(18, 16, 18, 24),
+              padding: EdgeInsets.fromLTRB(
+                18,
+                16,
+                18,
+                24 + MediaQuery.viewInsetsOf(ctx).bottom,
+              ),
               decoration: const BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Handle bar
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFDDDDDD),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-
-                  // Header Filter
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              // Sheet tetap bisa digulir dan tombol aksi selalu reachable
+              // walau keyboard pencarian sedang terbuka / layar kecil.
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.sizeOf(ctx).height * 0.82,
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Handle bar
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: WkmColors.border,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Header Filter
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Filter & Urutkan',
+                            style: TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: dark,
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.close,
+                              size: 20,
+                              color: dark,
+                            ),
+                            onPressed: () => Navigator.pop(ctx),
+                          ),
+                        ],
+                      ),
+                      const Divider(height: 12),
+
+                      // 1. Kategori
+                      const SizedBox(height: 6),
                       const Text(
-                        'Filter & Urutkan',
+                        'Kategori',
                         style: TextStyle(
                           fontFamily: 'Poppins',
-                          fontSize: 16,
+                          fontSize: 13,
                           fontWeight: FontWeight.bold,
                           color: dark,
                         ),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.close, size: 20, color: dark),
-                        onPressed: () => Navigator.pop(ctx),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        children: SearchViewModel.categories.map((cat) {
+                          final isSelected = tempCategory == cat;
+                          return ChoiceChip(
+                            label: Text(cat),
+                            selected: isSelected,
+                            selectedColor: orange,
+                            backgroundColor: WkmColors.border,
+                            labelStyle: TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: isSelected ? Colors.white : dark,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              side: BorderSide.none,
+                            ),
+                            onSelected: (val) {
+                              setModalState(() => tempCategory = cat);
+                            },
+                          );
+                        }).toList(),
+                      ),
+
+                      // 2. Urutkan (Sorting)
+                      const SizedBox(height: 14),
+                      const Text(
+                        'Urutkan',
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: dark,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: SearchViewModel.sortOptions.map((sort) {
+                          final isSelected = tempSort == sort;
+                          return ChoiceChip(
+                            label: Text(sort),
+                            selected: isSelected,
+                            selectedColor: orange,
+                            backgroundColor: WkmColors.border,
+                            labelStyle: TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: isSelected ? Colors.white : dark,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              side: BorderSide.none,
+                            ),
+                            onSelected: (val) {
+                              setModalState(() => tempSort = sort);
+                            },
+                          );
+                        }).toList(),
+                      ),
+
+                      // 3. Rentang Harga
+                      const SizedBox(height: 14),
+                      const Text(
+                        'Rentang Harga',
+                        style: TextStyle(
+                          fontFamily: 'Poppins',
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: dark,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: SearchViewModel.priceRanges.map((pr) {
+                          final isSelected = tempPrice == pr;
+                          return ChoiceChip(
+                            label: Text(pr),
+                            selected: isSelected,
+                            selectedColor: orange,
+                            backgroundColor: WkmColors.border,
+                            labelStyle: TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: isSelected ? Colors.white : dark,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              side: BorderSide.none,
+                            ),
+                            onSelected: (val) {
+                              setModalState(() => tempPrice = pr);
+                            },
+                          );
+                        }).toList(),
+                      ),
+
+                      const SizedBox(height: 22),
+
+                      // Tombol Aksi
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () {
+                                setModalState(() {
+                                  tempCategory =
+                                      SearchViewModel.defaultCategory;
+                                  tempSort = SearchViewModel.defaultSort;
+                                  tempPrice = SearchViewModel.defaultPriceRange;
+                                });
+                                // Reset langsung diterapkan supaya label tombol
+                                // tidak menyesatkan; query tetap dipertahankan.
+                                viewModel.resetFilters();
+                              },
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(
+                                  color: WkmColors.disabled,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
+                              ),
+                              child: const Text(
+                                'Reset Filter',
+                                style: TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontWeight: FontWeight.bold,
+                                  color: dark,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            flex: 2,
+                            child: ElevatedButton(
+                              onPressed: () {
+                                viewModel.applyFilters(
+                                  category: tempCategory,
+                                  sort: tempSort,
+                                  priceRange: tempPrice,
+                                );
+                                Navigator.pop(ctx);
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: orange,
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
+                              ),
+                              child: const Text(
+                                'Terapkan Filter',
+                                style: TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                  const Divider(height: 12),
-
-                  // 1. Kategori
-                  const SizedBox(height: 6),
-                  const Text(
-                    'Kategori',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: dark,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    children: ['Semua', 'Kopi', 'Non-Kopi', 'Makanan'].map((cat) {
-                      final isSelected = tempCategory == cat;
-                      return ChoiceChip(
-                        label: Text(cat),
-                        selected: isSelected,
-                        selectedColor: orange,
-                        backgroundColor: const Color(0xFFF0F0F0),
-                        labelStyle: TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: isSelected ? Colors.white : dark,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          side: BorderSide.none,
-                        ),
-                        onSelected: (val) {
-                          setModalState(() => tempCategory = cat);
-                        },
-                      );
-                    }).toList(),
-                  ),
-
-                  // 2. Urutkan (Sorting)
-                  const SizedBox(height: 14),
-                  const Text(
-                    'Urutkan',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: dark,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      'Paling Sesuai',
-                      'Harga Terendah',
-                      'Harga Tertinggi',
-                      'Nama A-Z',
-                    ].map((sort) {
-                      final isSelected = tempSort == sort;
-                      return ChoiceChip(
-                        label: Text(sort),
-                        selected: isSelected,
-                        selectedColor: orange,
-                        backgroundColor: const Color(0xFFF0F0F0),
-                        labelStyle: TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: isSelected ? Colors.white : dark,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          side: BorderSide.none,
-                        ),
-                        onSelected: (val) {
-                          setModalState(() => tempSort = sort);
-                        },
-                      );
-                    }).toList(),
-                  ),
-
-                  // 3. Rentang Harga
-                  const SizedBox(height: 14),
-                  const Text(
-                    'Rentang Harga',
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: dark,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      'Semua Harga',
-                      '< Rp18.000',
-                      'Rp18.000 - Rp20.000',
-                      '> Rp20.000',
-                    ].map((pr) {
-                      final isSelected = tempPrice == pr;
-                      return ChoiceChip(
-                        label: Text(pr),
-                        selected: isSelected,
-                        selectedColor: orange,
-                        backgroundColor: const Color(0xFFF0F0F0),
-                        labelStyle: TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: isSelected ? Colors.white : dark,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          side: BorderSide.none,
-                        ),
-                        onSelected: (val) {
-                          setModalState(() => tempPrice = pr);
-                        },
-                      );
-                    }).toList(),
-                  ),
-
-                  const SizedBox(height: 22),
-
-                  // Tombol Aksi
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () {
-                            setModalState(() {
-                              tempCategory = 'Semua';
-                              tempSort = 'Paling Sesuai';
-                              tempPrice = 'Semua Harga';
-                            });
-                          },
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Color(0xFFCCCCCC)),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                          ),
-                          child: const Text(
-                            'Reset',
-                            style: TextStyle(
-                              fontFamily: 'Poppins',
-                              fontWeight: FontWeight.bold,
-                              color: dark,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        flex: 2,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            viewModel.applyFilters(
-                              category: tempCategory,
-                              sort: tempSort,
-                              priceRange: tempPrice,
-                            );
-                            Navigator.pop(ctx);
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: orange,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                          ),
-                          child: const Text(
-                            'Terapkan Filter',
-                            style: TextStyle(
-                              fontFamily: 'Poppins',
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                ),
               ),
             );
           },

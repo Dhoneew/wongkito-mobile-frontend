@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../data/order_store.dart';
+import '../../main.dart';
+import '../../theme/wkm_style.dart';
 import '../tracking/tracking_screen.dart';
 
 class OrderSuccessScreen extends StatelessWidget {
@@ -11,31 +13,119 @@ class OrderSuccessScreen extends StatelessWidget {
     required this.orderId,
   });
 
-  static const Color orange = Color(0xFFF79F1A);
-  static const Color primaryOrange = Color(0xFFFF6200);
-  static const Color bg = Color(0xFFFAF9F9);
-  static const Color dark = Color(0xFF1A1C1C);
-  static const Color muted = Color(0xFF757575);
-  static const Color borderColor = Color(0xFFEEEEEE);
+  static const Color primaryOrange = WkmColors.orange;
+  static const Color bg = WkmColors.background;
+  static const Color dark = WkmColors.dark;
+  static const Color muted = WkmColors.muted;
+  static const Color borderColor = WkmColors.border;
 
-  String rupiah(int value) {
-    return 'Rp${value.toString().replaceAllMapped(
-          RegExp(r'\B(?=(\d{3})+(?!\d))'),
-          (_) => '.',
-        )}';
+  void _goToOrders(BuildContext context) {
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const MainNavigation(initialIndex: 2),
+      ),
+      (route) => false,
+    );
+  }
+
+  Widget _buildNotFound(BuildContext context) {
+    return Scaffold(
+      backgroundColor: bg,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        foregroundColor: dark,
+        elevation: 0.5,
+        title: const Text(
+          'Pesanan Berhasil Dibuat!',
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: dark,
+          ),
+        ),
+      ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.receipt_long_outlined,
+                size: 48,
+                color: primaryOrange,
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Detail pesanan belum tersedia',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: dark,
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Coba lihat daftar pesanan kamu.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 12,
+                  color: muted,
+                ),
+              ),
+              const SizedBox(height: 20),
+              wkmPrimaryButton(
+                label: 'Lihat Daftar Pesanan',
+                height: 46,
+                onPressed: () => _goToOrders(context),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final order = OrderStore.instance.viewModel.getOrderById(orderId);
-    final total = order?.price ?? 0;
-    final paymentMethod = order?.paymentMethod ?? 'QRIS';
-    final orderType = order?.orderType ?? 'Dine-in';
-    final tableNumber = order?.tableNumber ?? '';
-    final note = order?.note ?? '';
-    final details = order?.details ?? const [];
+    if (order == null) return _buildNotFound(context);
 
-    return Scaffold(
+    final total = order.price;
+    final paymentMethod = order.paymentMethod;
+    final orderType = order.orderType;
+    final tableNumber = order.tableNumber;
+    final note = order.note;
+    final details = order.details;
+    final paymentLabel = paymentMethod.startsWith('QRIS')
+        ? 'QRIS (Simulasi)'
+        : paymentMethod;
+    final paymentStatus = order.paymentStatus;
+    final isQris = paymentMethod.startsWith('QRIS');
+    // Cash memang "Lunas" di data lokal, tetapi dibayar di kasir — jangan
+    // diklaim sebagai pembayaran yang baru saja berhasil di aplikasi.
+    final isQrisPaid = isQris && paymentStatus == 'Lunas';
+    final headline =
+        isQrisPaid ? 'Pembayaran Berhasil' : 'Pesanan Berhasil Dibuat!';
+    final subtitle = isQrisPaid
+        ? 'Pembayaran simulasi sudah dikonfirmasi. Pesananmu siap disiapkan.'
+        : isQris
+            ? 'Pesananmu dibuat dan menunggu konfirmasi pembayaran QRIS.'
+            : 'Pesananmu sudah kami terima. Bayar di kasir saat mengambil pesanan.';
+
+    return PopScope(
+      // Back sistem dari halaman sukses mengarah ke Riwayat, bukan ke
+      // checkout lama yang keranjangnya sudah kosong.
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _goToOrders(context);
+      },
+      child: Scaffold(
       backgroundColor: bg,
       body: SafeArea(
         child: Column(
@@ -49,7 +139,7 @@ class OrderSuccessScreen extends StatelessWidget {
                       width: 96,
                       height: 96,
                       decoration: const BoxDecoration(
-                        color: Color(0xFFE8F5E9),
+                        color: WkmColors.successSoft,
                         shape: BoxShape.circle,
                       ),
                       child: Center(
@@ -57,7 +147,7 @@ class OrderSuccessScreen extends StatelessWidget {
                           width: 68,
                           height: 68,
                           decoration: const BoxDecoration(
-                            color: Color(0xFF2E7D32),
+                            color: WkmColors.success,
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
@@ -70,10 +160,10 @@ class OrderSuccessScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 18),
-                  const Text(
-                    'Pesanan Berhasil Dibuat!',
+                  Text(
+                    headline,
                     textAlign: TextAlign.center,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontFamily: 'Poppins',
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -81,6 +171,17 @@ class OrderSuccessScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 6),
+                  Text(
+                    subtitle,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 12,
+                      color: muted,
+                      height: 1.35,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                   Text(
                     'Nomor Pesanan: #$orderId',
                     textAlign: TextAlign.center,
@@ -123,12 +224,9 @@ class OrderSuccessScreen extends StatelessWidget {
                         _infoRow('Jenis Pesanan', orderType),
                         if (orderType == 'Dine-in' && tableNumber.isNotEmpty)
                           _infoRow('Nomor Meja', tableNumber),
-                        _infoRow(
-                          'Metode Pembayaran',
-                          paymentMethod == 'QRIS'
-                              ? 'QRIS (Simulasi)'
-                              : 'Tunai (Kasir)',
-                        ),
+                        _infoRow('Metode Pembayaran', paymentLabel),
+                        _infoRow('Status Pembayaran', paymentStatus),
+                        _infoRow('Status', order.status),
                         if (note.isNotEmpty) _infoRow('Catatan', note),
                         const Padding(
                           padding: EdgeInsets.symmetric(vertical: 10),
@@ -163,7 +261,7 @@ class OrderSuccessScreen extends StatelessWidget {
                                   ),
                                 ),
                                 Text(
-                                  rupiah(sub),
+                                  wkmRupiah(sub),
                                   style: const TextStyle(
                                     fontFamily: 'Inter',
                                     fontSize: 12,
@@ -192,7 +290,7 @@ class OrderSuccessScreen extends StatelessWidget {
                               ),
                             ),
                             Text(
-                              rupiah(total),
+                              wkmRupiah(total),
                               style: const TextStyle(
                                 fontFamily: 'Poppins',
                                 fontWeight: FontWeight.bold,
@@ -227,7 +325,6 @@ class OrderSuccessScreen extends StatelessWidget {
                           MaterialPageRoute(
                             builder: (_) => TrackingScreen(
                               orderId: orderId,
-                              total: total,
                             ),
                           ),
                         );
@@ -251,12 +348,24 @@ class OrderSuccessScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 10),
+                  wkmOutlineButton(
+                    label: 'Lihat Riwayat Pesanan',
+                    height: 46,
+                    onPressed: () => _goToOrders(context),
+                  ),
+                  const SizedBox(height: 10),
                   SizedBox(
                     width: double.infinity,
                     height: 46,
                     child: OutlinedButton(
                       onPressed: () {
-                        Navigator.of(context).popUntil((route) => route.isFirst);
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const MainNavigation(initialIndex: 0),
+                          ),
+                          (route) => false,
+                        );
                       },
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(color: primaryOrange, width: 1.2),
@@ -280,6 +389,7 @@ class OrderSuccessScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
       ),
     );
   }

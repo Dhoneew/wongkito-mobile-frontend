@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../data/order_store.dart';
-import '../../features/orders/viewmodels/order_viewmodel.dart';
-import '../tracking/tracking_screen.dart';
+import '../../theme/wkm_style.dart';
+import 'order_success_screen.dart';
 
 class PaymentCodeScreen extends StatefulWidget {
   final String orderId;
@@ -13,8 +13,8 @@ class PaymentCodeScreen extends StatefulWidget {
 
   const PaymentCodeScreen({
     super.key,
-    this.orderId = 'WK-005',
-    this.totalAmount = 36000,
+    required this.orderId,
+    required this.totalAmount,
   });
 
   @override
@@ -22,16 +22,22 @@ class PaymentCodeScreen extends StatefulWidget {
 }
 
 class _PaymentCodeScreenState extends State<PaymentCodeScreen> {
-  final OrderViewModel viewModel = OrderStore.instance.viewModel;
+  final OrderStore store = OrderStore.instance;
 
-  static const Color orange = Color(0xFFF57C00);
-  static const Color dark = Color(0xFF1A1C1C);
-  static const Color bg = Color(0xFFFAF9F9);
-  static const Color secondaryText = Color(0xFF666666);
+  static const Color orange = WkmColors.orange;
+  static const Color dark = WkmColors.dark;
+  static const Color bg = WkmColors.background;
+  static const Color secondaryText = WkmColors.muted;
 
   int _remainingSeconds = 15 * 60; // 15 minutes
   Timer? _timer;
   bool _isProcessing = false;
+  bool _paymentConfirmed = false;
+  bool _expired = false;
+
+  /// Feedback kegagalan konfirmasi. Pesanan sengaja tetap disimpan supaya
+  /// pengguna bisa mencoba lagi atau membatalkan dengan sadar.
+  String? _paymentError;
 
   @override
   void initState() {
@@ -43,10 +49,55 @@ class _PaymentCodeScreenState extends State<PaymentCodeScreen> {
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_remainingSeconds > 0) {
         setState(() => _remainingSeconds--);
+        if (_remainingSeconds == 0) _handleExpiry();
       } else {
         _timer?.cancel();
       }
     });
+  }
+
+  /// Simulasi QRIS kedaluwarsa: batalkan pesanan dan kembalikan item ke keranjang.
+  Future<void> _handleExpiry() async {
+    _timer?.cancel();
+    if (_expired || _paymentConfirmed || _isProcessing) return;
+    _expired = true;
+
+    store.cancelOrder(widget.orderId);
+    if (!mounted) return;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Waktu Pembayaran Habis',
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: WkmColors.dark,
+          ),
+        ),
+        content: const Text(
+          'Simulasi kode QRIS sudah kedaluwarsa. Pesanan dibatalkan dan item '
+          'dikembalikan ke keranjang.',
+          style: TextStyle(fontFamily: 'Inter', fontSize: 13),
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: WkmColors.orange,
+              foregroundColor: Colors.white,
+              elevation: 0,
+            ),
+            child: const Text('Mengerti'),
+          ),
+        ],
+      ),
+    );
+
+    if (mounted) Navigator.pop(context);
   }
 
   @override
@@ -61,29 +112,31 @@ class _PaymentCodeScreenState extends State<PaymentCodeScreen> {
     return '$minutes:$seconds';
   }
 
-  String rupiah(int value) {
-    return 'Rp${value.toString().replaceAllMapped(
-          RegExp(r'\B(?=(\d{3})+(?!\d))'),
-          (_) => '.',
-        )}';
-  }
-
   @override
   Widget build(BuildContext context) {
+    final order = store.viewModel.getOrderById(widget.orderId);
     final amountToPay = widget.totalAmount > 0
         ? widget.totalAmount
-        : (viewModel.cartTotal > 0
-            ? viewModel.cartTotal
-            : 36000);
+        : (order?.price ?? 0);
+    final orderDate = order?.date ?? '';
+    final paymentStatus = order?.paymentStatus ?? 'Menunggu Pembayaran';
 
-    return Scaffold(
+    return PopScope(
+      // Back sistem tidak langsung keluar: ia memakai dialog pembatalan yang
+      // sama dengan tombol, supaya item kembali ke keranjang dengan jelas.
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop || _isProcessing || _paymentConfirmed || _expired) return;
+        _cancelPayment();
+      },
+      child: Scaffold(
       backgroundColor: bg,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0.5,
         leading: IconButton(
           icon: const Icon(Icons.chevron_left, size: 28, color: dark),
-          onPressed: () => Navigator.pop(context),
+          onPressed: _cancelPayment,
         ),
         titleSpacing: 0,
         title: const Text(
@@ -108,9 +161,9 @@ class _PaymentCodeScreenState extends State<PaymentCodeScreen> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 14, vertical: 10),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFF4E8),
+                      color: WkmColors.warningSoft,
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFFFFD6B0)),
+                      border: Border.all(color: WkmColors.warningBorder),
                     ),
                     child: Row(
                       children: [
@@ -151,6 +204,11 @@ class _PaymentCodeScreenState extends State<PaymentCodeScreen> {
                     ),
                   ),
 
+                  if (_paymentError != null) ...[
+                    const SizedBox(height: 14),
+                    _buildPaymentErrorCard(),
+                  ],
+
                   const SizedBox(height: 14),
 
                   // KARTU UTAMA QRIS
@@ -159,7 +217,7 @@ class _PaymentCodeScreenState extends State<PaymentCodeScreen> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFFEAEAEA)),
+                      border: Border.all(color: WkmColors.border),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withValues(alpha: 0.05),
@@ -180,7 +238,7 @@ class _PaymentCodeScreenState extends State<PaymentCodeScreen> {
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 6, vertical: 2),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFED1C24),
+                                    color: WkmColors.qrisRed,
                                     borderRadius: BorderRadius.circular(3),
                                   ),
                                   child: const Text(
@@ -199,7 +257,7 @@ class _PaymentCodeScreenState extends State<PaymentCodeScreen> {
                                   'Pembayaran Nasional',
                                   style: TextStyle(
                                     fontFamily: 'Inter',
-                                    fontSize: 10,
+                                    fontSize: 11,
                                     color: secondaryText,
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -210,22 +268,22 @@ class _PaymentCodeScreenState extends State<PaymentCodeScreen> {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFE8F5E9),
+                                color: WkmColors.successSoft,
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: const Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Icon(Icons.check_circle,
-                                      size: 11, color: Color(0xFF2E7D32)),
+                                      size: 11, color: WkmColors.success),
                                   SizedBox(width: 3),
                                   Text(
-                                    'Verified',
+                                    'Terverifikasi',
                                     style: TextStyle(
                                       fontFamily: 'Inter',
-                                      fontSize: 9,
+                                      fontSize: 11,
                                       fontWeight: FontWeight.bold,
-                                      color: Color(0xFF2E7D32),
+                                      color: WkmColors.success,
                                     ),
                                   ),
                                 ],
@@ -251,7 +309,7 @@ class _PaymentCodeScreenState extends State<PaymentCodeScreen> {
                           'NMID: ID10202610200506',
                           style: TextStyle(
                             fontFamily: 'Inter',
-                            fontSize: 10,
+                            fontSize: 11,
                             color: secondaryText,
                           ),
                         ),
@@ -264,7 +322,7 @@ class _PaymentCodeScreenState extends State<PaymentCodeScreen> {
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFFE0E0E0)),
+                            border: Border.all(color: WkmColors.border),
                             boxShadow: [
                               BoxShadow(
                                 color: Colors.black.withValues(alpha: 0.03),
@@ -292,7 +350,7 @@ class _PaymentCodeScreenState extends State<PaymentCodeScreen> {
                             onPressed: _saveQrCode,
                             icon: const Icon(Icons.download, size: 18),
                             label: const Text(
-                              'Simpan kode QR',
+                              'Kode QR Siap Dipindai',
                               style: TextStyle(
                                 fontFamily: 'Poppins',
                                 fontSize: 13,
@@ -312,11 +370,13 @@ class _PaymentCodeScreenState extends State<PaymentCodeScreen> {
 
                         const SizedBox(height: 10),
                         const Text(
-                          'Bisa dipindai dari GoPay, OVO, DANA, ShopeePay, BCA, Livin & semua bank.',
+                          'Simulasi demo — tidak ada transaksi nyata. Bisa dipindai '
+                          'dari GoPay, OVO, DANA, ShopeePay & bank. Konfirmasi lewat '
+                          'tombol “Saya Sudah Bayar”.',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontFamily: 'Inter',
-                            fontSize: 10,
+                            fontSize: 11,
                             color: secondaryText,
                             height: 1.3,
                           ),
@@ -333,7 +393,7 @@ class _PaymentCodeScreenState extends State<PaymentCodeScreen> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFEAEAEA)),
+                      border: Border.all(color: WkmColors.border),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withValues(alpha: 0.03),
@@ -349,7 +409,7 @@ class _PaymentCodeScreenState extends State<PaymentCodeScreen> {
                           'TOTAL PEMBAYARAN',
                           style: TextStyle(
                             fontFamily: 'Inter',
-                            fontSize: 10,
+                            fontSize: 11,
                             fontWeight: FontWeight.bold,
                             color: secondaryText,
                             letterSpacing: 0.5,
@@ -360,7 +420,7 @@ class _PaymentCodeScreenState extends State<PaymentCodeScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              rupiah(amountToPay),
+                              wkmRupiah(amountToPay),
                               style: const TextStyle(
                                 fontFamily: 'Poppins',
                                 fontSize: 20,
@@ -412,7 +472,14 @@ class _PaymentCodeScreenState extends State<PaymentCodeScreen> {
                         const SizedBox(height: 6),
                         _detailRow('Metode', 'QRIS Dinamis'),
                         const SizedBox(height: 6),
-                        _detailRow('Waktu Transaksi', '20 Okt 2026, 17:05 WIB'),
+                        _detailRow('Status', paymentStatus),
+                        const SizedBox(height: 6),
+                        _detailRow(
+                          'Waktu Pesanan',
+                          orderDate.isEmpty
+                              ? 'Baru saja'
+                              : wkmFormatOrderDate(orderDate),
+                        ),
                       ],
                     ),
                   ),
@@ -420,11 +487,12 @@ class _PaymentCodeScreenState extends State<PaymentCodeScreen> {
                   const SizedBox(height: 14),
 
                   // CARA PEMBAYARAN (ACCORDION)
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
+                  Material(
+                    color: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFEAEAEA)),
+                      side: const BorderSide(color: WkmColors.border),
                     ),
                     child: Theme(
                       data: Theme.of(context)
@@ -460,7 +528,7 @@ class _PaymentCodeScreenState extends State<PaymentCodeScreen> {
                                 _StepItem(
                                   number: '3',
                                   text:
-                                      'Arahkan kamera ke kode QR di atas, atau klik "Simpan kode QR" lalu unggah dari galeri foto.',
+                                      'Arahkan kamera ke kode QR di atas. Pada demo ini, konfirmasi dilakukan lewat tombol "Saya Sudah Bayar".',
                                 ),
                                 _StepItem(
                                   number: '4',
@@ -534,12 +602,12 @@ class _PaymentCodeScreenState extends State<PaymentCodeScreen> {
                   ),
                   const SizedBox(height: 6),
                   TextButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: _cancelPayment,
                     child: const Text(
-                      'Batalkan / Ganti Pembayaran',
+                      'Batalkan Pembayaran',
                       style: TextStyle(
                         fontFamily: 'Inter',
-                        fontSize: 11,
+                        fontSize: 12,
                         color: secondaryText,
                       ),
                     ),
@@ -549,6 +617,105 @@ class _PaymentCodeScreenState extends State<PaymentCodeScreen> {
             ),
           ],
         ),
+      ),
+      ),
+    );
+  }
+
+  /// Inline error: tidak menutup halaman dan tidak menghilangkan pesanan.
+  Widget _buildPaymentErrorCard() {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: WkmColors.dangerSoft,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: WkmColors.danger.withValues(alpha: 0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.error_outline, size: 20, color: WkmColors.danger),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Pembayaran belum berhasil',
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: WkmColors.danger,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            _paymentError ?? '',
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 12,
+              color: dark,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 42,
+                  child: ElevatedButton(
+                    onPressed: _isProcessing ? null : _confirmPaymentSuccess,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: WkmColors.danger,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: WkmColors.disabled,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text(
+                      'Coba Lagi',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: SizedBox(
+                  height: 42,
+                  child: OutlinedButton(
+                    onPressed: _isProcessing ? null : _cancelPayment,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: dark,
+                      side: const BorderSide(color: WkmColors.border),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text(
+                      'Pilih Metode Lain',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -561,7 +728,7 @@ class _PaymentCodeScreenState extends State<PaymentCodeScreen> {
           label,
           style: const TextStyle(
             fontFamily: 'Inter',
-            fontSize: 11,
+            fontSize: 12,
             color: secondaryText,
           ),
         ),
@@ -569,7 +736,7 @@ class _PaymentCodeScreenState extends State<PaymentCodeScreen> {
           value,
           style: const TextStyle(
             fontFamily: 'Inter',
-            fontSize: 11,
+            fontSize: 12,
             fontWeight: FontWeight.w600,
             color: dark,
           ),
@@ -585,10 +752,10 @@ class _PaymentCodeScreenState extends State<PaymentCodeScreen> {
           children: [
             Icon(Icons.check_circle, color: Colors.white),
             SizedBox(width: 8),
-            Text('Kode QR berhasil disimpan ke Galeri!'),
+            Text('Simulasi demo: kode QR siap dipindai.'),
           ],
         ),
-        backgroundColor: const Color(0xFF2E7D32),
+        backgroundColor: WkmColors.success,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
@@ -596,102 +763,94 @@ class _PaymentCodeScreenState extends State<PaymentCodeScreen> {
   }
 
   Future<void> _confirmPaymentSuccess() async {
-  if (_isProcessing) return;
+    if (_isProcessing || _paymentConfirmed || _expired) return;
 
-  setState(() => _isProcessing = true);
+    setState(() {
+      _isProcessing = true;
+      _paymentError = null;
+    });
+    await Future.delayed(const Duration(milliseconds: 1200));
 
-  await Future.delayed(const Duration(milliseconds: 1200));
+    if (!mounted) return;
 
-  if (!mounted) return;
+    // Pesanan sudah dibuat di layar checkout. Jangan checkout lagi di sini.
+    // Gagal menandai lunas harus terlihat, bukan langsung dianggap berhasil.
+    final paid = store.markOrderPaid(widget.orderId);
+    if (!paid) {
+      setState(() {
+        _isProcessing = false;
+        _paymentError = 'Konfirmasi belum berhasil. Coba lagi, atau batalkan '
+            'untuk memilih metode pembayaran lain.';
+      });
+      return;
+    }
 
-  viewModel.checkout();
-
-    // Dialog Sukses
-    await showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogCtx) {
-        return AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFE8F5E9),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.check_circle,
-                  color: Color(0xFF2E7D32),
-                  size: 40,
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Pembayaran Berhasil!',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 17,
-                  fontWeight: FontWeight.bold,
-                  color: dark,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Terima kasih! Pesanan #${widget.orderId} sedang disiapkan oleh barista.',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 12,
-                  color: secondaryText,
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            SizedBox(
-              width: double.infinity,
-              height: 42,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(dialogCtx);
-                  // Buka halaman tracking
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => TrackingScreen(
-                        orderId: widget.orderId,
-                        total: widget.totalAmount,
-                      ),
-                    ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: orange,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: const Text(
-                  'Lihat Status Pesanan',
-                  style: TextStyle(
-                    fontFamily: 'Poppins',
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        );
-      },
+    _paymentConfirmed = true;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => OrderSuccessScreen(orderId: widget.orderId),
+      ),
     );
+  }
+
+  Future<void> _cancelPayment() async {
+    if (_isProcessing || _expired || _paymentConfirmed) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Batalkan Pembayaran?',
+          style: TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: WkmColors.dark,
+          ),
+        ),
+        content: const Text(
+          'Pesanan akan dibatalkan dan item dikembalikan ke keranjang supaya '
+          'kamu bisa mengganti metode pembayaran.',
+          style: TextStyle(fontFamily: 'Inter', fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: const Text('Lanjut Bayar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogCtx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: WkmColors.danger,
+              foregroundColor: Colors.white,
+              elevation: 0,
+            ),
+            child: const Text('Batalkan'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    final restored = store.cancelOrder(widget.orderId);
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            restored
+                ? 'Pembayaran dibatalkan. Item kembali ke keranjang.'
+                : 'Pembayaran dibatalkan.',
+          ),
+          backgroundColor: WkmColors.dark,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+      );
+    Navigator.pop(context);
   }
 }
 
@@ -721,9 +880,9 @@ class _StepItem extends StatelessWidget {
               number,
               style: const TextStyle(
                 fontFamily: 'Inter',
-                fontSize: 10,
+                fontSize: 11,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFFF57C00),
+                color: WkmColors.orange,
               ),
             ),
           ),
@@ -750,7 +909,7 @@ class _QrisPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paintDark = Paint()
-      ..color = const Color(0xFF1A1C1C)
+      ..color = WkmColors.dark
       ..style = PaintingStyle.fill;
 
     final paintWhite = Paint()
@@ -840,14 +999,14 @@ class _QrisPainter extends CustomPainter {
     canvas.drawRRect(
       RRect.fromRectAndRadius(centerRect, const Radius.circular(5)),
       Paint()
-        ..color = const Color(0xFFF57C00)
+        ..color = WkmColors.orange
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.5,
     );
 
     // Gambar simbol mini kopi di tengah
     final iconPaint = Paint()
-      ..color = const Color(0xFFF57C00)
+      ..color = WkmColors.orange
       ..style = PaintingStyle.fill;
     final cx = size.width / 2;
     final cy = size.height / 2;
@@ -864,7 +1023,7 @@ class _QrisPainter extends CustomPainter {
       3.0,
       false,
       Paint()
-        ..color = const Color(0xFFF57C00)
+        ..color = WkmColors.orange
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2,
     );
